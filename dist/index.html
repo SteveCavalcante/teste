@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="pt-BR">
+    <meta charset="utf-8" /><meta
+        name="viewport"
+        content="width=device-width,initial-scale=1"
+    /><title>Conecta | Parametrização de integrações</title
+    ><link rel="stylesheet" href="style.css" />
+    <script src="xlsx.js" defer></script>
+    <script src="js/repositories/browser-storage-repository.js" defer></script>
+    <script src="js/repositories/layout-api-repository.js" defer></script>
+    <script src="js/utils/formatters.js" defer></script>
+    <script src="js/services/layout-service.js" defer></script>
+    <script src="js/services/sql-service.js" defer></script>
+    <script src="js/services/project-service.js" defer></script>
+    <script src="js/views/portal-view.js" defer></script>
+    <script src="js/controllers/portal-controller.js" defer></script>
+    <script src="js/models/portal-state.js" defer></script>
+    <script src="app.js" defer></script>
+    <body>
+        <aside>
+            <a class="brand" href="#"
+                ><b>conecta<span style="color: #ff8a29">.</span></b
+                ><small>PORTAL DE INTEGRAÇÕES</small></a
+            >
+            <div class="navlabel">NAVEGAÇÃO</div>
+            <button class="nav active" id="navHome">▦ &nbsp; Projetos</button
+            ><button class="nav" id="navImport">
+                ↥ &nbsp; Importar planilha</button
+            ><button class="nav" id="navGuide">⌘ &nbsp; Guia do modelo</button>
+            <div class="sidebottom">
+                <span class="avatar">SC</span>
+                <div>Steve Cavalcante<small>Protótipo de interface</small></div>
+            </div>
+        </aside>
+        <main>
+            <header>
+                <span
+                    >Portal <i>/</i> Integrações <i>/</i>
+                    <b>Parametrizações</b></span
+                ><span class="env">● Protótipo • Front-end</span>
+            </header>
+            <p
+                class="hint"
+                id="projectStorageStatus"
+                role="status"
+                style="padding: 0 24px"
+            ></p>
+            <div class="content">
+                <section id="projectsView">
+                    <div class="heading">
+                        <div>
+                            <div class="eyebrow">SOLICITAÇÕES DOS PRODUTOS</div>
+                            <h1>Projetos de Parametrização</h1>
+                            <p>
+                                Organize as solicitações e acesse os Transtypes
+                                de cada projeto.
+                            </p>
+                        </div>
+                        <button class="primary" id="newProject">
+                            ＋ Novo projeto
+                        </button>
+                    </div>
+                    <div class="project-actions">
+                        <input
+                            type="search"
+                            id="projectSearch"
+                            placeholder="Pesquisar projetos…"
+                            aria-label="Pesquisar projetos"
+                        /><button class="secondary" id="projectLayouts">
+                            Gerenciar layouts
+                        </button>
+                    </div>
+                    <p class="hint">
+                        Projetos e parametrizações são salvos neste navegador.
+                        Os layouts podem ser reutilizados entre projetos.
+                    </p>
+                    <div id="projectList" class="project-list"></div>
+                </section>
+                <div id="parameterView" hidden>
+                    <div class="project-context">
+                        <button class="link" id="backProjects">
+                            ← Projetos
+                        </button>
+                        <div>
+                            <small>PROJETO SELECIONADO</small
+                            ><strong id="selectedProjectName"></strong>
+                            <p id="selectedProjectDescription"></p>
+                        </div>
+                    </div>
+                    <div class="save-project-bar">
+                        <button class="primary" id="saveProject" type="button">
+                            Salvar projeto
+                        </button>
+                        <span id="saveProjectFeedback" role="status"></span>
+                    </div>
+                    <div class="heading">
+                        <div>
+                            <div class="eyebrow">
+                                DADOS QUE CONECTAM SISTEMAS
+                            </div>
+                            <h1>Parametrizações de integração</h1>
+                            <p>
+                                Prepare as parametrizações e regras para o
+                                script SQL que será executado pela esteira.
+                            </p>
+                        </div>
+                        <button class="primary" id="importBtn">
+                            ＋ Importar Excel
+                        </button>
+                    </div>
+                    <div class="notice">
+                        ◈
+                        <div>
+                            <b>Da planilha à integração, com controle.</b
+                            ><span
+                                >Importe os campos, revise os mapeamentos e
+                                configure as regras em SQL.</span
+                            >
+                        </div>
+                        <button id="template">Baixar modelo ↗</button>
+                    </div>
+                    <section class="parameter-type-panel">
+                        <fieldset id="parameterType">
+                            <legend>
+                                Tipo de parametrização
+                                <span class="required-star">*</span>
+                            </legend>
+                            <div class="parameter-radios">
+                                <label class="radio-card"
+                                    ><input
+                                        type="radio"
+                                        name="parameterType"
+                                        id="typeLK2"
+                                        value="LK2"
+                                        required
+                                    /><span>LK2</span></label
+                                ><label class="radio-card"
+                                    ><input
+                                        type="radio"
+                                        name="parameterType"
+                                        id="typeVP8"
+                                        value="VP8"
+                                        required
+                                    /><span>VP8</span></label
+                                >
+                            </div>
+                        </fieldset>
+                        <p id="parameterTypeInfo">
+                            A seleção se aplica a todo o conjunto atual.
+                        </p>
+                    </section>
+                    <section class="layout-panel">
+                        <div>
+                            <label for="layoutSelect">Layout de entrada</label
+                            ><select id="layoutSelect"></select>
+                            <div class="service-code-field">
+                                <label for="serviceCode"
+                                    >Código de Serviço</label
+                                ><input
+                                    id="serviceCode"
+                                    type="text"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1,5}"
+                                    maxlength="5"
+                                    autocomplete="off"
+                                    placeholder="Ex.: 12345"
+                                    aria-describedby="serviceCodeHint serviceCodeFeedback"
+                                /><small id="serviceCodeHint"
+                                    >Até 5 dígitos, de 0 a 9.</small
+                                ><small
+                                    id="serviceCodeFeedback"
+                                    role="status"
+                                ></small>
+                            </div>
+                            <div class="integration-locations">
+                                <div>
+                                    <label for="sourceDatabase"
+                                        >Database - Origem</label
+                                    ><input
+                                        id="sourceDatabase"
+                                        type="text"
+                                        maxlength="255"
+                                        autocomplete="off"
+                                        placeholder="Informe o database de origem"
+                                    />
+                                </div>
+                                <div>
+                                    <label for="sourceTable"
+                                        >Tabela - Origem</label
+                                    ><input
+                                        id="sourceTable"
+                                        type="text"
+                                        maxlength="255"
+                                        autocomplete="off"
+                                        placeholder="Informe a tabela de origem"
+                                    />
+                                </div>
+                                <div>
+                                    <label for="destinationDatabase"
+                                        >Database - Destino</label
+                                    ><input
+                                        id="destinationDatabase"
+                                        type="text"
+                                        maxlength="255"
+                                        autocomplete="off"
+                                        placeholder="Selecione LK2 ou VP8 acima"
+                                    />
+                                </div>
+                                <div>
+                                    <label for="destinationTable"
+                                        >Tabela - Destino</label
+                                    ><input
+                                        id="destinationTable"
+                                        type="text"
+                                        maxlength="255"
+                                        autocomplete="off"
+                                        placeholder="Informe a tabela de destino"
+                                    />
+                                </div>
+                                <small
+                                    id="destinationDatabaseHint"
+                                    role="status"
+                                ></small>
+                            </div>
+                        </div>
+                        <button class="secondary" id="manageLayouts">
+                            Gerenciar layouts
+                        </button>
+                    </section>
+                    <section
+                        class="parameter-details-panel"
+                        aria-labelledby="parameterDetailsTitle"
+                    >
+                        <h2 id="parameterDetailsTitle">
+                            Informações da parametrização
+                        </h2>
+                        <div class="parameter-details-fields">
+                            <div>
+                                <label for="parameterSquad">Squad</label
+                                ><input
+                                    id="parameterSquad"
+                                    type="text"
+                                    maxlength="100"
+                                    placeholder="Informe a squad responsável"
+                                    autocomplete="off"
+                                />
+                            </div>
+                            <div>
+                                <label for="parameterKnowledgeBase"
+                                    >Base de conhecimento</label
+                                ><input
+                                    id="parameterKnowledgeBase"
+                                    type="text"
+                                    maxlength="2000"
+                                    placeholder="Informe o código da base de conhecimento"
+                                    autocomplete="off"
+                                />
+                            </div>
+                        </div>
+                        <p class="hint">
+                            Informações salvas automaticamente neste projeto.
+                        </p>
+                    </section>
+                    <p
+                        id="autoRuleInfo"
+                        class="auto-rule-info"
+                        role="status"
+                    ></p>
+                    <section class="stats">
+                        <article>
+                            <span>Transtypes</span
+                            ><strong id="systems">0</strong
+                            ><small>regras agrupadas por código</small>
+                        </article>
+                        <article>
+                            <span>Sem alertas preliminares</span
+                            ><strong id="valid">0</strong
+                            ><small
+                                ><em>●</em> Transtypes sem alertas de
+                                validação</small
+                            >
+                        </article>
+                        <article>
+                            <span>Precisam de atenção</span
+                            ><strong id="invalid">0</strong
+                            ><small
+                                ><em class="orange">●</em> Transtypes com campos
+                                para revisar</small
+                            >
+                        </article>
+                    </section>
+                    <section class="panel">
+                        <div class="paneltitle">
+                            <div>
+                                <h2>
+                                    Parametrizações contábeis
+                                    <span id="count"></span>
+                                </h2>
+                                <p id="fileName">
+                                    Exemplo demonstrativo • alterações salvas
+                                    neste navegador
+                                </p>
+                            </div>
+                            <button
+                                class="primary"
+                                id="export"
+                                title="Baixar em Excel as linhas exibidas, respeitando os filtros"
+                            >
+                                Gerar parametrização
+                            </button>
+                        </div>
+                        <div class="toolbar">
+                            <input
+                                id="search"
+                                placeholder="⌕  Buscar transtype, campo, empresa ou conta…"
+                                aria-label="Buscar parametrizações"
+                            /><select id="filter" aria-label="Filtrar status">
+                                <option value="all">Todos os status</option>
+                                <option value="ok">Sem alertas</option>
+                                <option value="error">Com alertas</option>
+                                <option value="excluded">
+                                    Somente marcadas para exclusão
+                                </option>
+                                <option value="pilot">
+                                    Somente marcadas para piloto
+                                </option></select
+                            ><span
+                                >Selecione um Transtype para editar todos os
+                                seus campos ↗</span
+                            >
+                        </div>
+                        <div class="bulk-markings">
+                            <div
+                                class="bulk-marking-group"
+                                role="group"
+                                aria-label="Marcação em lote de Piloto"
+                            >
+                                <b>Piloto</b
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="pilotAll"
+                                >
+                                    Marcar todas</button
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="pilotNone"
+                                >
+                                    Desmarcar todas
+                                </button>
+                            </div>
+                            <div
+                                class="bulk-marking-group"
+                                role="group"
+                                aria-label="Marcação em lote de Exclusão"
+                            >
+                                <b>Exclusão</b
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="excludeAll"
+                                >
+                                    Marcar todas</button
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="excludeNone"
+                                >
+                                    Desmarcar todas
+                                </button>
+                            </div>
+                            <small id="bulkMarkingScope" role="status"></small>
+                        </div>
+                        <div class="table-hint">
+                            Uma linha por Transtype, com todas as condições
+                            consolidadas.
+                            <span
+                                >Role horizontalmente para visualizar todas as
+                                colunas →</span
+                            >
+                        </div>
+                        <div
+                            class="tablewrap"
+                            tabindex="0"
+                            role="region"
+                            aria-label="Planilha de parametrizações, com rolagem horizontal"
+                        >
+                            <table>
+                                <thead id="paramHeader">
+                                    <tr>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="transtype"
+                                                aria-label="Ordenar por TRANSTYPE"
+                                            >
+                                                TRANSTYPE
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="DESCRICAO_TRANSTYPE"
+                                                aria-label="Ordenar por DESCRIÇÃO TRANSTYPE"
+                                            >
+                                                DESCRIÇÃO TRANSTYPE
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="regra_sql"
+                                                aria-label="Ordenar por REGRA"
+                                            >
+                                                REGRA
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="EMPRESA"
+                                                aria-label="Ordenar por EMPRESA"
+                                            >
+                                                EMPRESA
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="ATRIBUTO_DATA"
+                                                aria-label="Ordenar por ATRIBUTO DATA"
+                                            >
+                                                ATRIBUTO DATA
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="ATRIBUTO_VALOR"
+                                                aria-label="Ordenar por ATRIBUTO VALOR"
+                                            >
+                                                ATRIBUTO VALOR
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="DEPARTAMENTO DEBITO"
+                                                aria-label="Ordenar por DEPARTAMENTO DÉBITO"
+                                            >
+                                                DEPARTAMENTO DÉBITO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="DEPARTAMENTO CREDITO"
+                                                aria-label="Ordenar por DEPARTAMENTO CRÉDITO"
+                                            >
+                                                DEPARTAMENTO CRÉDITO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="CONTA DEBITO"
+                                                aria-label="Ordenar por CONTA DÉBITO"
+                                            >
+                                                CONTA DÉBITO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="CONTA CREDITO"
+                                                aria-label="Ordenar por CONTA CRÉDITO"
+                                            >
+                                                CONTA CRÉDITO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="review"
+                                                aria-label="Ordenar por REVISÃO"
+                                            >
+                                                REVISÃO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col" aria-sort="none">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="validation"
+                                                aria-label="Ordenar por VALIDAÇÃO"
+                                            >
+                                                VALIDAÇÃO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="excluded"
+                                                aria-label="Ordenar por Excluir"
+                                            >
+                                                EXCLUIR
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col">
+                                            <button
+                                                type="button"
+                                                class="column-sort"
+                                                data-sort="pilot"
+                                                aria-label="Ordenar por Piloto"
+                                            >
+                                                PILOTO
+                                                <span
+                                                    class="sort-indicator"
+                                                    aria-hidden="true"
+                                                    >↕</span
+                                                >
+                                            </button>
+                                        </th>
+                                        <th scope="col">EDITAR</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rows"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <label
+                                >Transtypes por página<select
+                                    id="pageSize"
+                                    aria-label="Transtypes por página"
+                                >
+                                    <option value="10">10</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select></label
+                            ><span id="pageInfo" role="status"></span>
+                            <div class="page-buttons">
+                                <button
+                                    type="button"
+                                    class="secondary"
+                                    id="firstPage"
+                                    aria-label="Primeira página"
+                                >
+                                    «</button
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="previousPage"
+                                    aria-label="Página anterior"
+                                >
+                                    ‹</button
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="nextPage"
+                                    aria-label="Próxima página"
+                                >
+                                    ›</button
+                                ><button
+                                    type="button"
+                                    class="secondary"
+                                    id="lastPage"
+                                    aria-label="Última página"
+                                >
+                                    »
+                                </button>
+                            </div>
+                        </div>
+                        <footer>
+                            <span id="shown"></span
+                            ><span
+                                >Destino: arquivo SQL para a esteira • sem
+                                atualização direta na base.</span
+                            >
+                        </footer>
+                    </section>
+                    <div class="bottom">
+                        <div>
+                            <h3>Condições organizadas por transtype.</h3>
+                            <p>
+                                Um Transtype pode variar apenas em campo,
+                                operador e valor. Descrição, empresa, atributos,
+                                departamentos e contas devem ser iguais.
+                            </p>
+                        </div>
+                        <button id="guide" class="link">
+                            Ver estrutura do Excel →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <dialog id="importDialog">
+            <form method="dialog"><button class="close">×</button></form>
+            <div class="eyebrow">IMPORTAÇÃO</div>
+            <h2>Comece com sua planilha</h2>
+            <p>
+                Arquivos .xlsx, .xls ou .csv, até 10 MB. Informe a linha que
+                contém os cabeçalhos.
+            </p>
+            <label
+                >Formato das regras<select id="importMode">
+                    <option value="columns">
+                        Uma condição por linha: campo, operador e valor
+                    </option>
+                    <option value="sql">
+                        Um Transtype por linha: regra em uma célula
+                    </option>
+                </select></label
+            >
+            <p id="importModeInfo">
+                O portal também aceita uma coluna regra_sql com condições
+                ligadas por AND/E ou OR/OU, ou separadas por quebras de linha.
+            </p>
+            <button id="sqlTemplate" class="secondary">
+                Baixar modelo com regra</button
+            ><label class="drop"
+                >↥<b>Escolha um arquivo Excel</b
+                ><input type="file" id="upload" accept=".xlsx,.xls,.csv"
+            /></label>
+            <div id="mapping" hidden>
+                <label
+                    >Linha do cabeçalho<input
+                        id="headerRow"
+                        type="number"
+                        min="1"
+                        max="10000"
+                        step="1"
+                        value="1" /></label
+                ><label>Aba<select id="sheet"></select></label>
+                <div id="mapFields"></div>
+                <p id="importSummary"></p>
+                <button id="confirmImport" class="primary">
+                    Importar parametrizações
+                </button>
+            </div>
+            <p id="importError" role="alert"></p>
+        </dialog>
+        <dialog id="editor">
+            <form method="dialog"><button class="close">×</button></form>
+            <div class="eyebrow">PARAMETRIZAÇÃO DO TRANSTYPE</div>
+            <h2 id="ttEditorTitle">Editar Transtype</h2>
+            <p class="hint">
+                Os dados compartilhados são informados uma vez e aplicados a
+                todas as condições ao salvar.
+            </p>
+            <p id="ttSharedWarning" class="tt-shared-warning" role="alert"></p>
+            <section id="rawSqlRepair" class="raw-sql-repair" hidden>
+                <h3>Regra importada com erro</h3>
+                <p id="rawSqlError" role="alert"></p>
+                <label for="rawSqlInput">Texto original da regra</label>
+                <textarea id="rawSqlInput" spellcheck="false"></textarea>
+                <button type="button" class="secondary" id="revalidateRawSql">
+                    Revalidar regra
+                </button>
+                <p class="hint">
+                    Corrija as aspas e os operadores AND/E ou OR/OU. Nenhuma
+                    correção é aplicada automaticamente.
+                </p>
+            </section>
+            <h3 class="tt-section-title">Dados compartilhados</h3>
+            <div class="fields tt-shared-fields" id="ttSharedFields"></div>
+            <div class="tt-conditions-heading">
+                <h3 class="tt-section-title">
+                    Condições <span id="ttConditionCount"></span>
+                </h3>
+                <button type="button" class="secondary" id="addTtCondition">
+                    Adicionar condição
+                </button>
+            </div>
+            <p class="hint">
+                Selecione o campo na lista do layout; use a pesquisa para
+                localizá-lo. Campos desconhecidos vindos do Excel ficam
+                sinalizados até a correção. O tipo do valor vem do layout. As
+                condições informadas são preservadas ao salvar.
+            </p>
+            <div class="tt-conditions-wrap">
+                <table class="tt-conditions-table">
+                    <thead>
+                        <tr>
+                            <th>LÓGICA</th>
+                            <th>CAMPO</th>
+                            <th>OPERADOR</th>
+                            <th>VALOR</th>
+                            <th>VALIDAÇÃO</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="ttConditions"></tbody>
+                </table>
+            </div>
+            <label
+                >Regra consolidada<textarea
+                    id="sql"
+                    readonly
+                    spellcheck="false"
+                ></textarea>
+            </label>
+            <p class="hint">
+                Prévia MySQL com os nomes campo_dataprep e os tipos definidos no
+                layout. Textos são tratados na tela; nenhuma regra é executada
+                no banco.
+            </p>
+            <p id="sqlFeedback" role="status"></p>
+            <div class="tt-editor-actions">
+                <button type="button" class="primary" id="saveTt">
+                    Salvar Transtype</button
+                ><button type="button" class="secondary" id="cancelTt">
+                    Cancelar
+                </button>
+            </div>
+        </dialog>
+        <dialog id="guideDialog">
+            <form method="dialog"><button class="close">×</button></form>
+            <div class="eyebrow">GUIA DO MODELO</div>
+            <h2>Uma condição por linha</h2>
+            <p>
+                Use as colunas abaixo. Também é possível substituir campo,
+                operador e valor por uma coluna regra_sql. A célula pode usar
+                AND/E, OR/OU ou apenas espaço/quebra de linha entre condições
+                completas. Aceita IN, NOT IN, &gt;, &gt;=, &lt;, &lt;=, = e
+                &lt;&gt;. Informe listas separadas por vírgulas, sem parênteses.
+                Os parênteses são adicionados na montagem do SQL. Funções ou
+                agrupamentos lógicos são sinalizados para revisão. Regras com
+                aspas incorretas são carregadas com alerta e texto original para
+                correção.
+            </p>
+            <div id="guideFields"></div>
+            <p>
+                O portal gera uma prévia SQL a partir de campo, operador e
+                valor. Os operadores AND/E e OR/OU são preservados; sem
+                conectivo, é usado AND. Os demais atributos devem ser iguais em
+                todas as linhas desse transtype. Formate códigos e contas como
+                Texto no Excel para preservar os zeros à esquerda.
+            </p>
+            <button class="primary" id="guideTemplate">
+                Baixar Excel de exemplo
+            </button>
+        </dialog>
+        <dialog id="layoutDialog">
+            <form method="dialog"><button class="close">×</button></form>
+            <div class="eyebrow">LAYOUT DE ENTRADA</div>
+            <h2>Cadastrar ou editar layout</h2>
+            <p>
+                Importe Excel ou CSV com
+                <b>campo_produto;campo_dataprep;tipo</b>. campo_produto é
+                opcional; campo_dataprep e tipo são obrigatórios. A prévia SQL
+                escreve o campo DataPrep.
+            </p>
+            <section class="layout-storage-panel">
+                <b>Arquivos de layout do projeto</b>
+                <p>
+                    Cada layout é armazenado em um JSON na pasta
+                    <code>layouts/</code>, com datas de cadastro e alteração.
+                </p>
+                <div class="layout-storage-actions">
+                    <button class="secondary" id="refreshProjectLayouts">
+                        Recarregar layouts
+                    </button>
+                </div>
+                <p id="layoutFolderStatus" role="status"></p>
+                <p id="layoutStorageFeedback" role="status"></p>
+                <div class="layout-inventory-wrap">
+                    <table class="layout-inventory">
+                        <thead>
+                            <tr>
+                                <th>LAYOUT</th>
+                                <th>CÓDIGO</th>
+                                <th>CADASTRO</th>
+                                <th>ÚLTIMA ALTERAÇÃO</th>
+                                <th>LOCAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="layoutInventory"></tbody>
+                    </table>
+                </div>
+            </section>
+            <label
+                >Layout cadastrado<select id="layoutEditSelect"></select
+            ></label>
+            <p id="layoutDates" class="hint"></p>
+            <label for="layoutCode"
+                >Código do layout <span class="required-star">*</span></label
+            >
+            <input
+                id="layoutCode"
+                type="text"
+                maxlength="100"
+                required
+                autocomplete="off"
+                aria-describedby="layoutCodeHint"
+                placeholder="Informe o código do layout"
+            />
+            <small id="layoutCodeHint" class="hint"
+                >Obrigatório para cadastrar ou salvar alterações no
+                layout.</small
+            >
+            <label
+                >Nome do layout<input id="layoutName" maxlength="100"
+            /></label>
+            <div class="layout-import-actions">
+                <button class="secondary" id="layoutTemplate">
+                    ↓ Baixar modelo do layout</button
+                ><label
+                    >Importar layout (.xlsx, .xls, .csv ou .layout.json)<input
+                        type="file"
+                        id="layoutUpload"
+                        accept=".xlsx,.xls,.csv,.json"
+                /></label>
+            </div>
+            <label id="layoutSheetLabel" hidden
+                >Aba do layout<select id="layoutSheet"></select></label
+            ><label
+                >Mapeamento do layout<textarea
+                    id="layoutFields"
+                    spellcheck="false"
+                    placeholder="campo_produto;campo_dataprep;tipo&#10;tipo_evento;cod_tipo_evento;INT"
+                ></textarea>
+            </label>
+            <p class="hint">
+                Uma linha por campo. Produto é opcional: ;CAMPO_EXEMPLO;STRING.
+                DataPrep e tipo são obrigatórios. Tipos: STRING, INT, DECIMAL,
+                DATE ou DATETIME. Maiúsculas e minúsculas dos nomes são
+                preservadas; hífen é permitido. IN e NOT IN usam uma lista de
+                valores do mesmo tipo do campo.
+            </p>
+            <p id="layoutError" role="alert"></p>
+            <div class="layout-preview-wrap">
+                <table class="layout-preview">
+                    <thead>
+                        <tr>
+                            <th>CAMPO_PRODUTO</th>
+                            <th>CAMPO_DATAPREP</th>
+                            <th>TIPO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="layoutPreview"></tbody>
+                </table>
+            </div>
+            <div class="layout-save-actions">
+                <button class="primary" id="saveLayout">
+                    Salvar e selecionar layout</button
+                ><button class="secondary" id="downloadLayoutJson">
+                    Baixar cópia JSON</button
+                ><button class="secondary danger" id="deleteLayout">
+                    Excluir layout
+                </button>
+            </div>
+        </dialog>
+        <div id="toast" role="status"></div>
+        <dialog id="projectDialog">
+            <form id="projectForm">
+                <button type="button" class="close" id="closeProjectDialog">
+                    ×
+                </button>
+                <div class="eyebrow">NOVA SOLICITAÇÃO</div>
+                <h2>Novo projeto de parametrização</h2>
+                <label
+                    >Nome do produto / projeto<input
+                        id="projectName"
+                        maxlength="100"
+                        required /></label
+                ><label
+                    >Descrição da solicitação<textarea
+                        id="projectDescription"
+                        maxlength="2000"
+                        required
+                    ></textarea></label
+                ><button class="primary" type="submit">Criar projeto</button>
+            </form>
+        </dialog>
+        <dialog id="deleteLayoutDialog">
+            <form id="deleteLayoutForm">
+                <button type="button" class="close" id="cancelDeleteLayout">
+                    ×
+                </button>
+                <h2>Excluir layout</h2>
+                <p id="deleteLayoutMessage"></p>
+                <label
+                    >Digite exatamente EXCLUIR<input
+                        id="deleteLayoutConfirmation"
+                        autocomplete="off"
+                        required
+                /></label>
+                <p id="deleteLayoutError" role="alert"></p>
+                <button
+                    class="primary danger"
+                    id="confirmDeleteLayout"
+                    type="submit"
+                    disabled
+                >
+                    Confirmar exclusão
+                </button>
+            </form>
+        </dialog>
+        <dialog id="deleteProjectDialog">
+            <form id="deleteProjectForm">
+                <button
+                    type="button"
+                    class="close"
+                    id="cancelDeleteProject"
+                    aria-label="Cancelar exclusão do projeto"
+                >
+                    ×
+                </button>
+                <h2>Excluir projeto</h2>
+                <p id="deleteProjectMessage"></p>
+                <label
+                    >Digite exatamente EXCLUIR<input
+                        id="deleteProjectConfirmation"
+                        autocomplete="off"
+                        required
+                /></label>
+                <p id="deleteProjectError" role="alert"></p>
+                <button
+                    class="primary danger"
+                    type="submit"
+                    id="confirmDeleteProject"
+                    disabled
+                >
+                    Confirmar exclusão do projeto
+                </button>
+            </form>
+        </dialog>
+    </body>
+</html>

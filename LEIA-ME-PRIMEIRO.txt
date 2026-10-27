@@ -1,0 +1,28 @@
+PORTAL DE INTEGRAÇÕES — PROJETO COMPLETO ORGANIZADO
+
+1. Extraia o ZIP inteiro para uma pasta do computador.
+2. Abra essa pasta no VS Code.
+3. No terminal, execute:
+
+   python server.py
+
+   No Windows, se necessário: py server.py
+
+4. Abra no navegador:
+
+   http://localhost:8080
+
+5. Deixe o terminal aberto. Ctrl+C encerra o servidor.
+
+Requisito: Python 3.9 ou superior. Não precisa instalar pacotes.
+Mantenha as pastas backend, dist e layouts junto do server.py.
+
+O projeto completo está neste ZIP. Os três arquivos da montagem manual
+anterior não precisam ser copiados sobre esta versão.
+
+Para entender os arquivos, leia docs/ARQUITETURA.md e README.md.
+Dados do portal hospedado não são incluídos no ZIP: projetos e Transtypes
+são salvos no navegador de cada endereço. Layouts em arquivo ficam em layouts/.
+
+SALVAMENTO LOCAL
+Ao executar com python server.py, projetos são gravados em dados/portal.json. Guarde cópias de dados/ e layouts/ em outro local. O portal hospedado não acessa esse arquivo.
