@@ -50,6 +50,8 @@ function fillLayoutForm() {
     $("layoutUpload").value = "";
     previewLayout();
     renderLayoutStorage();
+    layoutBaseline = layoutDraftKey();
+    updateUnsavedBanner();
 }
 
 function renderLayoutStorage() {
@@ -66,9 +68,7 @@ function renderLayoutStorage() {
         ? "Armazenamento ativo: pasta layouts/ do projeto. Nenhuma seleção de pasta é necessária."
         : "Modo de prévia: layouts salvos apenas neste navegador. Para gravar os JSONs em layouts/ do projeto, execute python server.py no código-fonte e acesse http://localhost:8080.";
     $("refreshProjectLayouts").disabled = projectLayoutLoading;
-    $("saveLayout").textContent = projectLayoutApiAvailable
-        ? "Salvar no projeto e selecionar"
-        : "Salvar nesta prévia e selecionar";
+    $("saveLayout").textContent = "Salvar";
     $("layoutInventory").innerHTML =
         layouts
             .map(
@@ -188,7 +188,7 @@ function visibleTts(records = ttRecords()) {
 function ttTableRow(record) {
     const { tt, rows, base, errors, sql } = record,
         conflicts = meta.filter((k) => rows.some((r) => r[k] !== base[k]));
-    return `<tr tabindex="0" data-tt="${esc(tt)}" aria-label="Editar Transtype ${esc(tt || "sem código")}">${ttColumns
+    return `<tr tabindex="${projectReadOnly ? "-1" : "0"}" data-tt="${esc(tt)}" aria-label="${projectReadOnly ? "Transtype" : "Editar Transtype"} ${esc(tt || "sem código")}">${ttColumns
         .map((k) => {
             if (k === "regra_sql")
                 return `<td class="tt-sql-cell"><pre>${esc(sql)}</pre>${rows.some((row) => row._sqlImportError) ? '<small class="raw-sql-warning">Regra original com erro • abra para corrigir</small>' : ""}</td>`;
@@ -198,7 +198,7 @@ function ttTableRow(record) {
         })
         .join(
             "",
-        )}<td><span class="badge ${errors.length ? "error" : ""}">${errors.length ? "◌ Com alerta" : "● Sem alertas"}</span></td><td class="validation-detail">${esc(errors.join(" | ") || "Todos os campos preenchidos.")}</td><td class="exclude-cell"><input type="checkbox" data-exclude="${esc(tt)}" aria-label="Marcar ${esc(tt)} para exclusão" ${excludedTranstypes.has(tt) ? "checked" : ""}></td><td class="exclude-cell pilot-cell"><input type="checkbox" data-pilot="${esc(tt)}" aria-label="Marcar ${esc(tt)} para piloto" ${pilotTranstypes.has(tt) ? "checked" : ""}></td><td>↗</td></tr>`;
+        )}<td><span class="badge ${errors.length ? "error" : ""}">${errors.length ? "◌ Com alerta" : "● Sem alertas"}</span></td><td class="validation-detail">${esc(errors.join(" | ") || "Todos os campos preenchidos.")}</td><td class="exclude-cell"><input type="checkbox" data-exclude="${esc(tt)}" aria-label="Marcar ${esc(tt)} para exclusão" ${excludedTranstypes.has(tt) ? "checked" : ""}></td><td class="exclude-cell pilot-cell"><input type="checkbox" data-pilot="${esc(tt)}" aria-label="Marcar ${esc(tt)} para piloto" ${pilotTranstypes.has(tt) ? "checked" : ""}></td><td>${projectReadOnly ? "" : "↗"}</td></tr>`;
 }
 
 function render() {
@@ -213,9 +213,6 @@ function render() {
         : "Selecione LK2 ou VP8 antes de importar e revisar a prévia SQL.";
     const records = ttRecords();
     renderBulkMarkings(records);
-    $("autoRuleInfo").textContent = !records.length
-        ? "Importe uma planilha para começar."
-        : "As regras refletem as condições informadas na importação ou edição.";
     const ok = records.filter((record) => !record.errors.length).length;
     $("valid").textContent = ok;
     $("invalid").textContent = records.length - ok;
@@ -255,10 +252,11 @@ function render() {
                 : "↓"
             : "↕";
     }
+    applyProjectMode();
 }
 
 function fieldPickerHtml(id, control, value, label, searchLabel, attributes) {
-    return `<div class="condition-field-picker"><select hidden id="${control}" ${attributes} required>${conditionFieldOptions(value)}</select><button type="button" class="field-picker-button" role="combobox" aria-label="${esc(label)}" aria-haspopup="listbox" aria-controls="tt_field_options_${id}" aria-expanded="false" data-open-picker="${id}" id="tt_field_button_${id}"><span class="field-picker-value">${esc(fieldPickerLabel(value))}</span><span aria-hidden="true">⌄</span></button><div class="field-picker-popup" id="tt_field_popup_${id}" hidden><div class="field-source-tabs" role="group" aria-label="Layout dos campos">${["Produto", "DataPrep"].map((source) => `<button type="button" data-field-source="${source}" data-picker-id="${id}" aria-pressed="false">${source}</button>`).join("")}</div><input type="search" id="tt_field_search_${id}" data-field-search="${id}" aria-label="${esc(searchLabel)}" placeholder="Pesquisar campo…" autocomplete="off"><div role="listbox" aria-label="Campos do layout: ${esc(label)}" class="field-picker-options" id="tt_field_options_${id}"></div><small id="tt_search_status_${id}" class="field-search-status" role="status"></small></div></div>`;
+    return `<div class="condition-field-picker"><select hidden id="${control}" ${attributes} required>${conditionFieldOptions(value)}</select><button type="button" class="field-picker-button" role="combobox" aria-label="${esc(label)}" aria-haspopup="listbox" aria-controls="tt_field_options_${id}" aria-expanded="false" data-open-picker="${id}" id="tt_field_button_${id}"><span class="field-picker-value">${esc(fieldPickerLabel(value))}</span><span aria-hidden="true">⌄</span></button><div class="field-picker-popup" id="tt_field_popup_${id}" hidden><div class="field-source-tabs" role="group" aria-label="Layout dos campos">${["Produto", "Spec"].map((source) => `<button type="button" data-field-source="${source}" data-picker-id="${id}" aria-pressed="false">${source}</button>`).join("")}</div><input type="search" id="tt_field_search_${id}" data-field-search="${id}" aria-label="${esc(searchLabel)}" placeholder="Pesquisar campo…" autocomplete="off"><div role="listbox" aria-label="Campos do layout: ${esc(label)}" class="field-picker-options" id="tt_field_options_${id}"></div><small id="tt_search_status_${id}" class="field-search-status" role="status"></small></div></div>`;
 }
 
 function fieldPickerLabel(value, source) {
@@ -275,7 +273,7 @@ function fieldPickerLabel(value, source) {
             ? source
             : fieldKey(field.campo_produto) === fieldKey(value)
               ? "Produto"
-              : "DataPrep";
+              : "Spec";
     return fieldName(value) + " · " + origin + " · " + field.tipo;
 }
 
@@ -284,7 +282,7 @@ function renderTtConditions() {
     $("ttConditions").innerHTML = ttDraft.conditions
         .map(
             (condition, index) =>
-                `<tr data-condition-id="${condition.id}"><td><select id="tt_connector_${condition.id}" data-condition-field="_connector" data-condition-id="${condition.id}" aria-label="Operador lógico da condição ${index + 1}" ${index === 0 ? "disabled" : ""}>${index === 0 ? '<option value="AND">Início</option>' : ["AND", "OR"].map((op) => `<option value="${op}" ${op === normalizedConnector(condition._connector) ? "selected" : ""}>${op === "AND" ? "AND / E" : "OR / OU"}</option>`).join("")}</select></td><td>${fieldPickerHtml(condition.id, "tt_campo_" + condition.id, condition.campo, "Campo da condição " + (index + 1), "Pesquisar campo da condição " + (index + 1), 'data-condition-field="campo" data-condition-id="' + condition.id + '"')}</td><td><select data-condition-field="operador" data-condition-id="${condition.id}" id="tt_operador_${condition.id}" aria-label="Operador da condição ${index + 1}">${!ops.includes(normalizedOp(condition.operador)) ? `<option value="${esc(condition.operador)}">${esc(condition.operador)} (não aceito)</option>` : ""}${ops.map((op) => `<option ${op === normalizedOp(condition.operador) ? "selected" : ""}>${esc(op)}</option>`).join("")}</select></td><td><input data-condition-field="valor" data-condition-id="${condition.id}" id="tt_valor_${condition.id}" aria-label="Valor da condição ${index + 1}" value="${esc(condition.valor)}" required></td><td class="tt-condition-validation" id="tt_error_${condition.id}"></td><td><button type="button" class="tt-remove-condition" data-remove-condition="${condition.id}" aria-label="Remover condição ${index + 1}">×</button></td></tr>`,
+                `<tr data-condition-id="${condition.id}"><td>${fieldPickerHtml(condition.id, "tt_campo_" + condition.id, condition.campo, "Campo da condição " + (index + 1), "Pesquisar campo da condição " + (index + 1), 'data-condition-field="campo" data-condition-id="' + condition.id + '"')}</td><td><select data-condition-field="operador" data-condition-id="${condition.id}" id="tt_operador_${condition.id}" aria-label="Operador da condição ${index + 1}">${!ops.includes(normalizedOp(condition.operador)) ? `<option value="${esc(condition.operador)}">${esc(condition.operador)} (não aceito)</option>` : ""}${ops.map((op) => `<option ${op === normalizedOp(condition.operador) ? "selected" : ""}>${esc(op)}</option>`).join("")}</select></td><td><input data-condition-field="valor" data-condition-id="${condition.id}" id="tt_valor_${condition.id}" aria-label="Valor da condição ${index + 1}" value="${esc(condition.valor)}" required></td><td class="tt-condition-validation" id="tt_error_${condition.id}"></td><td><button type="button" class="tt-remove-condition" data-remove-condition="${condition.id}" aria-label="Remover condição ${index + 1}">×</button></td></tr>`,
         )
         .join("");
     $("ttConditionCount").textContent = ttDraft.conditions.length;
@@ -332,12 +330,20 @@ function ttFeedback() {
             );
     }
     if (collision) {
+        if (ttDraft.revalidated) {
+            $("rawSqlError").classList.remove("success");
+            $("rawSqlError").textContent = "Corrija a duplicidade do Transtype antes de salvar.";
+        }
         $("sql").value = "-- Já existe um Transtype com esse nome.";
         $("sqlFeedback").textContent =
             "Já existe um Transtype com esse nome. Use outro código.";
         return;
     }
     if (!rows.length) {
+        if (ttDraft.revalidated) {
+            $("rawSqlError").classList.remove("success");
+            $("rawSqlError").textContent = "Adicione uma condição antes de salvar.";
+        }
         $("sql").value = "-- Adicione pelo menos uma condição.";
         $("sqlFeedback").textContent = "Adicione pelo menos uma condição.";
         return;
@@ -345,6 +351,12 @@ function ttFeedback() {
     const preview = rows.map((r) => ({ ...r }));
     $("sql").value = sqlFor(preview);
     const errors = rows.filter((r) => check(r, rows)).length;
+    if (ttDraft.revalidated) {
+        $("rawSqlError").classList.toggle("success", !errors);
+        $("rawSqlError").textContent = errors
+            ? "Sintaxe revalidada, mas há campos ou valores para corrigir."
+            : "Regra revalidada com sucesso. Salve o Transtype para aplicar.";
+    }
     $("sqlFeedback").textContent = errors
         ? errors + " condição(ões) com alertas para revisar."
         : rows.length + " condição(ões) neste Transtype.";
@@ -367,30 +379,26 @@ function renderMapping() {
         })
         .join("");
     $("importModeInfo").textContent =
-        $("importMode").value === "sql"
-            ? "SQL em uma célula: AND/E e OR/OU (sem diferenciar maiúsculas); espaços ou quebras de linha entre condições completas viram AND. Operadores: IN, NOT IN, >, >=, <, <=, = e <>. Informe listas sem parênteses: 150, 151 ou 'A', 'B'. Parênteses são adicionados apenas na prévia SQL. AND/E e OR/OU são aceitos; funções e agrupamentos lógicos não são aceitos."
-            : "Condições nas três colunas campo, operador e valor.";
+        "SQL em uma célula: AND/E (sem diferenciar maiúsculas); espaços ou quebras de linha entre condições completas viram AND. Operadores: IN, NOT IN, >, >=, <, <=, = e <>. Informe listas sem parênteses: 150, 151 ou 'A', 'B'. Funções e agrupamentos lógicos não são aceitos.";
     $("importError").textContent = "";
     $("importSummary").textContent =
         `${Math.max(raw.length - headerIndex() - 1, 0)} linhas identificadas. A importação substituirá o conjunto atual. Códigos devem estar como Texto no Excel para preservar zeros à esquerda.`;
 }
 
 function renderProjects() {
+    $("parameterListTitle").textContent = "Consultar parametrizações";
     const query = normalizedText($("projectSearch").value);
     $("projectList").innerHTML =
-        projects
-            .filter((p) =>
-                normalizedText(p.name + " " + p.description).includes(query),
-            )
+        paginateList(sortConsultation(projects.filter(p => (normalizedText(p.name + " " + p.description).includes(query) || (p.rows || []).some(r => normalizedText(r.transtype).includes(query)))), "projects"), "projects")
             .map(
                 (p) =>
-                    `<article class="project-card"><div><h2>${esc(p.name)}</h2><p>${esc(p.description)}</p><small>${new Set(p.rows.map((r) => r.transtype)).size} Transtypes · Cadastro: ${esc(formatLayoutDate(p.createdAt))}</small></div><div class="project-card-actions"><button class="secondary" data-open-project="${esc(p.id)}">Acessar projeto →</button><button class="link danger" data-delete-project="${esc(p.id)}" aria-label="Excluir projeto ${esc(p.name)}">Excluir projeto</button></div></article>`,
+                    `<article class="project-card"><div><h2>${esc(p.name)}</h2><p>${esc(p.description)}</p><small>${new Set(p.rows.map((r) => r.transtype)).size} Transtypes · Cadastro: ${esc(formatLayoutDate(p.createdAt))} · Atualização: ${esc(formatLayoutDate(p.updatedAt))}</small></div><div class="project-card-actions"><button class="secondary" data-view-project="${esc(p.id)}">Exibir</button><button class="secondary" data-open-project="${esc(p.id)}">Alterar</button><button class="link danger" data-delete-project="${esc(p.id)}" aria-label="Excluir parametrização ${esc(p.name)}">Excluir</button></div></article>`,
             )
             .join("") ||
         '<div class="project-empty">' +
             (projects.length
                 ? "Nenhum projeto encontrado."
-                : "Nenhum projeto cadastrado. Clique em Novo projeto para começar.") +
+                : "Nenhuma parametrização cadastrada. Use Parametrização > Cadastrar.") +
             "</div>";
 }
 

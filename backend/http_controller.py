@@ -38,16 +38,7 @@ class PortalHttpController(BaseHTTPRequestHandler):
         ):
             raise PermissionError("Origem não permitida.")
         size = int(self.headers.get("Content-Length", "0"))
-        if (
-            not 0
-            < size
-            <= (
-                self.project_repository.MAX_BYTES
-                if urlsplit(self.path).path == "/api/projects"
-                and self.project_repository
-                else self.repository.MAX_BYTES
-            )
-        ):
+        if not 0 < size <= (self.project_repository.MAX_BYTES if urlsplit(self.path).path == "/api/projects" and self.project_repository else self.repository.MAX_BYTES):
             raise ValueError("Conteúdo vazio ou maior que 2 MB.")
         return json.loads(self.rfile.read(size).decode("utf-8"))
 
@@ -67,12 +58,7 @@ class PortalHttpController(BaseHTTPRequestHandler):
                     payload = self.read_json()
                     if not isinstance(payload, dict):
                         raise ValueError("Dados inválidos.")
-                    self.send_json(
-                        200,
-                        self.project_repository.write(
-                            payload.get("revision"), payload.get("values")
-                        ),
-                    )
+                    self.send_json(200, self.project_repository.write(payload.get("revision"), payload.get("values")))
                     return
             if route == "/api/layouts" and self.command == "GET":
                 layouts, errors, _ = self.repository.list()
@@ -97,6 +83,10 @@ class PortalHttpController(BaseHTTPRequestHandler):
                         200, {"layout": self.repository.save(identifier, body)}
                     )
                 else:
+                    if self.project_repository is not None:
+                        store = self.project_repository.read()["values"].get("conecta-projects-v1", {})
+                        if any(p.get("layoutId") == identifier for p in store.get("projects", [])):
+                            raise ValueError("Layout vinculado a parametrizações. Remova os vínculos antes de excluir.")
                     self.repository.delete(identifier, body.get("confirmation"))
                     self.send_json(200, {"deleted": identifier})
                 return

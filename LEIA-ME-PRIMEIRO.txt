@@ -25,4 +25,4 @@ Dados do portal hospedado não são incluídos no ZIP: projetos e Transtypes
 são salvos no navegador de cada endereço. Layouts em arquivo ficam em layouts/.
 
 SALVAMENTO LOCAL
-Ao executar com python server.py, projetos são gravados em dados/portal.json. Guarde cópias de dados/ e layouts/ em outro local. O portal hospedado não acessa esse arquivo.
+Ao executar com python server.py, projetos são gravados individualmente em dados/projetos/ e referenciados por dados/indice.json. Guarde cópias de dados/ e layouts/ em outro local. O portal hospedado não acessa esse arquivo.

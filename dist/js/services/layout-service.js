@@ -27,53 +27,41 @@ function resolveField(name) {
     const fields = activeLayout()?.fields || [],
         value = fieldKey(name);
     if (!value) return undefined;
-    return (
-        fields.find((f) => fieldKey(f.campo_produto) === value) ||
-        fields.find((f) => fieldKey(f.campo_dataprep) === value)
-    );
+    const matches = fields.filter((f) => fieldKey(f.campo_produto) === value);
+    if (matches.length > 1) return undefined;
+    return matches[0] || fields.find((f) => fieldKey(f.campo_dataprep) === value);
 }
 
 function selectableFields() {
-    const items = new Map();
-    for (const f of activeLayout()?.fields || [])
-        for (const [name, origin] of [
-            [f.campo_produto, "Produto"],
-            [f.campo_dataprep, "DataPrep"],
-        ]) {
-            if (!name) continue;
-            if (items.has(name)) items.get(name).origin = "Produto · DataPrep";
-            else items.set(name, { name, origin, tipo: f.tipo });
+    const fields = activeLayout()?.fields || [], items = [];
+    const counts = new Map();
+    for (const f of fields) if (f.campo_produto) counts.set(fieldKey(f.campo_produto), (counts.get(fieldKey(f.campo_produto)) || 0) + 1);
+    for (const f of fields) {
+        if (f.campo_produto) {
+            const ambiguous = counts.get(fieldKey(f.campo_produto)) > 1;
+            const useTarget = ambiguous || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(f.campo_produto);
+            items.push({name: f.campo_produto, value: useTarget ? f.campo_dataprep : f.campo_produto, origin: "Produto", tipo: f.tipo, target: f.campo_dataprep});
         }
-    return [...items.values()];
+        items.push({name: f.campo_dataprep, value: f.campo_dataprep, origin: "Spec", tipo: f.tipo, target: f.campo_dataprep});
+    }
+    return items;
 }
 
 function validateLayoutFields(fields) {
     if (!fields.length) throw Error("Informe pelo menos um campo.");
-    const seen = new Set(),
-        targets = new Set();
+    const targets = new Set();
     for (let i = 0; i < fields.length; i++) {
         const f = fields[i];
         if (!f.campo_dataprep || !f.tipo)
             throw Error(
                 "Linha " +
                     (i + 2) +
-                    ": preencha campo_dataprep e tipo. campo_produto é opcional.",
+                    ": preencha campo_spec e tipo. campo_produto é opcional.",
             );
-        if (
-            (f.campo_produto &&
-                !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(f.campo_produto)) ||
-            !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(f.campo_dataprep)
-        )
-            throw Error(
-                "Linha " +
-                    (i + 2) +
-                    ": nomes devem conter letras, números, sublinhado e hífen, sem espaços.",
-            );
-        if (f.campo_produto && seen.has(fieldKey(f.campo_produto)))
-            throw Error("Campo de produto duplicado: " + f.campo_produto + ".");
-        if (f.campo_produto) seen.add(fieldKey(f.campo_produto));
+        if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(f.campo_dataprep))
+            throw Error("Linha " + (i + 2) + ": campo Spec deve conter letras, números, sublinhado e hífen, sem espaços.");
         if (targets.has(fieldKey(f.campo_dataprep)))
-            throw Error("Campo DataPrep duplicado: " + f.campo_dataprep + ".");
+            throw Error("Campo Spec duplicado: " + f.campo_dataprep + ".");
         targets.add(fieldKey(f.campo_dataprep));
         if (!layoutTypes.includes(f.tipo))
             throw Error(
@@ -102,39 +90,34 @@ function validateLayoutFields(fields) {
 }
 
 function layoutText(fields) {
-    return (
-        "campo_produto;campo_dataprep;tipo\n" +
-        fields
-            .map((f) => [f.campo_produto, f.campo_dataprep, f.tipo].join(";"))
-            .join("\n")
-    );
+    const quote = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    return "campo_produto;campo_spec;tipo\n" + fields.map(f => [f.campo_produto, f.campo_dataprep, f.tipo].map(quote).join(";")).join("\n");
 }
 
 function parseLayoutText(text) {
-    let lines = String(text)
-        .split(/\r?\n/)
-        .filter((l) => l.trim());
-    if (
-        lines[0] &&
-        ["campoproduto", "campoorigem"].includes(norm(lines[0].split(";")[0]))
-    )
-        lines.shift();
-    return validateLayoutFields(
-        lines.map((line, i) => {
-            let parts = line.split(";");
-            if (parts.length !== 3)
-                throw Error(
-                    "Linha " +
-                        (i + 2) +
-                        ": informe três colunas separadas por ponto e vírgula.",
-                );
-            return {
-                campo_produto: fieldName(parts[0]),
-                campo_dataprep: fieldName(parts[1]),
-                tipo: layoutType(parts[2]),
-            };
-        }),
-    );
+    const rows = []; let row = [], cell = "", quoted = false, start = true;
+    text = String(text);
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quoted) {
+            if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+            else if (c === '"') quoted = false;
+            else cell += c;
+        } else if (c === '"' && start) { quoted = true; start = false; }
+        else if (c === ';') { row.push(cell); cell = ""; start = true; }
+        else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); if (row.some(v => v.trim())) rows.push(row);
+            row = []; cell = ""; start = true;
+        } else { cell += c; start = false; }
+    }
+    if (quoted) throw Error("Aspas não fechadas no layout.");
+    row.push(cell); if (row.some(v => v.trim())) rows.push(row);
+    if (rows[0] && ["campoproduto", "campoorigem"].includes(norm(rows[0][0]))) rows.shift();
+    return validateLayoutFields(rows.map((parts, i) => {
+        if (parts.length !== 3) throw Error("Linha " + (i + 2) + ": informe três colunas separadas por ponto e vírgula; use aspas para ponto e vírgula no campo de produto.");
+        return {campo_produto: fieldName(parts[0]), campo_dataprep: fieldName(parts[1]), tipo: layoutType(parts[2])};
+    }));
 }
 
 function makeLayoutDraft() {
@@ -149,7 +132,7 @@ function makeLayoutDraft() {
         throw Error($("layoutError").textContent || "Corrija o mapeamento.");
     const previous = layouts.find((l) => l.id === chosen) || layoutDraftRecord,
         id = previous?.id || newRecordId();
-    if (layouts.some((l) => l.id !== id && l.name === name))
+    if (layouts.some((l) => l.id !== id && nameKey(l.name) === nameKey(name)))
         throw Error("Já existe um layout com esse nome.");
     const now = new Date().toISOString();
     return {

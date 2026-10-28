@@ -18,12 +18,13 @@ function loadLayoutSheet() {
                 headers.findIndex(
                     (h) =>
                         norm(h) === k ||
-                        (k === "campoproduto" && norm(h) === "campoorigem"),
+                        (k === "campoproduto" && norm(h) === "campoorigem") ||
+                        (k === "campodataprep" && norm(h) === "campospec"),
                 ),
             );
         if (positions.slice(1).some((i) => i < 0))
             throw Error(
-                "A aba deve conter campo_dataprep e tipo. campo_produto é opcional.",
+                "A aba deve conter campo_spec e tipo. campo_produto é opcional.",
             );
         if (rows.length > 10001)
             throw Error("Use no máximo 10.000 campos no layout.");
@@ -58,6 +59,7 @@ function refreshLayoutOptions() {
 }
 
 function editTt(tt) {
+    if (projectReadOnly) return;
     const rows = data.filter((r) => String(r.transtype ?? "") === tt);
     if (!rows.length) return;
     const base = rows[0],
@@ -73,11 +75,18 @@ function editTt(tt) {
             _connector: r._connector || "AND",
         })),
         conflicts,
-        importError: rows.find((r) => r._sqlImportError)?._sqlImportError || "",
+        importError: rows.find((r) => r._sqlImportError)?._sqlImportError ||
+            (rows.some(r => ["OR", "OU"].includes(String(r._connector || "").toUpperCase()))
+                ? "A regra contém OR/OU. Altere para AND/E e revalide antes de salvar." : ""),
     };
     $("rawSqlRepair").hidden = !ttDraft.importError;
-    $("rawSqlInput").value = ttDraft.importError ? originalSqlFor(rows) : "";
+    $("rawSqlInput").value = ttDraft.importError
+        ? (rows.some(r => r._sqlImportError || r._sourceSql !== undefined)
+            ? originalSqlFor(rows)
+            : rows.map((r, i) => (i ? normalizedConnector(r._connector) + " " : "") + expression(r)).join("\n"))
+        : "";
     $("rawSqlError").textContent = ttDraft.importError;
+    $("rawSqlError").classList.remove("success");
     $("ttEditorTitle").textContent = "Editar Transtype " + (tt || "sem código");
     $("ttSharedWarning").textContent = conflicts.length
         ? "Há dados divergentes em " +
@@ -104,7 +113,7 @@ function conditionFieldOptions(value, query = "") {
         fields
             .map(
                 (f) =>
-                    `<option value="${esc(f.name)}" ${fieldKey(f.name) === fieldKey(selected) ? "selected" : ""}>${esc(fieldPickerLabel(f.name))}</option>`,
+                    `<option value="${esc(f.value)}" ${fieldKey(f.value) === fieldKey(selected) ? "selected" : ""}>${esc(fieldPickerLabel(f.name))}</option>`,
             )
             .join("")
     );
@@ -130,7 +139,7 @@ function filterConditionFields(id, query) {
         matches
             .map(
                 (f) =>
-                    `<button type="button" role="option" aria-selected="${f.name === value}" data-pick-field="${esc(f.name)}" data-picker-id="${id}">${esc(f.name)} <small class="field-origin">${esc(source)} · ${esc(f.tipo)}</small></button>`,
+                    `<button type="button" role="option" aria-selected="${f.name === value}" data-pick-field="${esc(f.value)}" data-picker-id="${id}">${esc(f.name)}${source === "Produto" && f.value !== f.name ? " → " + esc(f.target) : ""} <small class="field-origin">${esc(source)} · ${esc(f.tipo)}</small></button>`,
             )
             .join("") ||
         '<div class="field-no-results">Nenhum campo encontrado</div>';
@@ -190,10 +199,10 @@ function openFieldPicker(id) {
                 (activeLayout()?.fields || []).some(
                     (f) => f.campo_dataprep === value,
                 )
-              ? "DataPrep"
+              ? "Spec"
               : (activeLayout()?.fields || []).some((f) => f.campo_produto)
                 ? "Produto"
-                : "DataPrep");
+                : "Spec");
     search.value = "";
     filterConditionFields(id, "");
     positionFieldPicker();
@@ -254,12 +263,8 @@ function captureTtDraft() {
     for (const condition of ttDraft.conditions)
         for (const k of ["campo", "operador", "valor"])
             condition[k] = $("tt_" + k + "_" + condition.id).value.trim();
-    for (const condition of ttDraft.conditions) {
-        condition._connector =
-            $("tt_connector_" + condition.id).value ||
-            condition._connector ||
-            "AND";
-    }
+    for (const condition of ttDraft.conditions)
+        condition._connector = "AND";
     return normalizeListRows(
         ttDraft.conditions.map((c) => ({
             ...ttDraft.shared,
@@ -420,7 +425,7 @@ function generateParameterization() {
 }
 
 function importKeys() {
-    return $("importMode").value === "sql" ? [...meta, "regra_sql"] : keys;
+    return [...meta, "regra_sql"];
 }
 
 function readSheet() {
@@ -430,11 +435,6 @@ function readSheet() {
         raw: false,
         blankrows: true,
     });
-    $("importMode").value = (raw[headerIndex()] || []).some((h) =>
-        ["regra", "regrasql", "regras", "sql"].includes(norm(h)),
-    )
-        ? "sql"
-        : "columns";
     renderMapping();
 }
 
@@ -463,27 +463,31 @@ function loadDemoTranstypes() {
 }
 
 function showProjects() {
-    persist();
-    $("parameterView").hidden = true;
-    $("projectsView").hidden = false;
+    if (!permitNavigation()) return;
+    discardProjectEdit();
+    showMainView("projectsView");
+    setNavigation("navHome");
     renderProjects();
     scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function openProject(id) {
+function openProject(id, readOnly = false) {
+    if (!permitNavigation()) return;
+    projectReadOnly = readOnly;
+    setNavigation("navHome");
     $("saveProjectFeedback").textContent = "";
-    persist();
     restoreProject(id);
+    projectEditActive = !readOnly;
+    projectBaseline = "";
     tableState.page = 1;
     $("search").value = "";
     $("filter").value = "all";
     renderLayouts();
     normalizeListRows(data);
-
-    persist();
     render();
-    $("projectsView").hidden = true;
-    $("parameterView").hidden = false;
+    showMainView("parameterView");
+    projectBaseline = projectDraftKey();
+    updateUnsavedBanner();
     scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -505,24 +509,23 @@ function openDeleteProject(id) {
 
 /** Bind DOM events once, after model hydration and initial rendering. */
 function bindPortalEvents() {
+    $("exportProjectJson").onclick = exportProjectJson;
+    $("copyProject").onclick = copyProject;
+    $("cancelCopyProject").onclick = () => $("copyProjectDialog").close();
+    $("copyProjectForm").onsubmit = confirmProjectCopy;
+    for (const id of ["importProjectJson", "importProjectJsonList"]) $(id).onclick = () => $("projectJsonFile").click();
+    $("projectJsonFile").onchange = event => importProjectJson(event.target.files[0]);
     $("saveProject").onclick = () => {
         try {
-            persist();
+            commitProjectEdit();
             let message;
-            if (portalRepository.blocked)
-                message =
-                    "Não foi possível confirmar o salvamento no arquivo. " +
-                    portalRepository.message;
-            else if (portalRepository.local)
-                message = "Projeto salvo no computador em dados/portal.json.";
-            else
-                message =
-                    "Projeto salvo neste navegador. Para salvar em arquivo, execute o portal com Python.";
+            if (portalRepository.blocked) message = "Não foi possível confirmar o salvamento no arquivo. " + portalRepository.message;
+            else if (portalRepository.local) message = "Projeto salvo no computador em dados/projetos/.";
+            else message = "Projeto salvo neste navegador. Para salvar em arquivo, execute o portal com Python.";
             $("saveProjectFeedback").textContent = message;
             toast(message);
         } catch (error) {
-            $("saveProjectFeedback").textContent =
-                "Não foi possível salvar: " + error.message;
+            $("saveProjectFeedback").textContent = "Não foi possível salvar: " + error.message;
             toast($("saveProjectFeedback").textContent);
         }
     };
@@ -595,6 +598,10 @@ function bindPortalEvents() {
         render();
     };
     $("manageLayouts").onclick = () => {
+        if (!permitNavigation()) return;
+        layoutViewOnly = false;
+        applyLayoutMode();
+        $("layoutDialogTitle").textContent = "Cadastrar ou alterar layout";
         $("layoutEditSelect").innerHTML =
             '<option value="">Novo layout</option>' +
             layouts
@@ -605,11 +612,31 @@ function bindPortalEvents() {
                 .join("");
         fillLayoutForm();
         renderLayoutStorage();
-        $("layoutDialog").showModal();
+        layoutReturnToParameter = !$("parameterView").hidden;
+        $("backLayouts").textContent = "Voltar";
+        showMainView("layoutDialog");
         loadProjectLayouts();
     };
+    $("navLayoutCreate").onclick = () => openLayoutAction("create");
+    $("navLayouts").onclick = openLayoutConsultation;
+    $("navParamCreate").onclick = () => { setNavigation("navParamCreate"); openProjectCreate(); };
+    $("layoutListSearch").oninput = () => { listPagination.layouts.page = 1; renderLayoutList(); };
+    bindListPagination();
+    $("backLayouts").onclick = closeLayoutEditor;
+    $("backLayoutsBottom").onclick = closeLayoutEditor;
+    $("backProjectsBottom").onclick = showProjects;
+    $("saveProjectBottom").onclick = () => $("saveProject").onclick();
+    $("layoutList").onclick = (event) => {
+        const view = event.target.closest("[data-view-layout]");
+        if (view) { openLayoutAction("view", view.dataset.viewLayout); return; }
+        const edit = event.target.closest("[data-edit-layout]");
+        if (edit) { openLayoutAction("edit", edit.dataset.editLayout); return; }
+        const remove = event.target.closest("[data-delete-layout]");
+        if (remove) requestLayoutDelete(remove.dataset.deleteLayout);
+    };
     $("layoutEditSelect").onchange = fillLayoutForm;
-    $("layoutFields").oninput = previewLayout;
+    $("layoutFields").oninput = () => { previewLayout(); updateUnsavedBanner(); };
+    for (const id of ["layoutCode", "layoutName"]) $(id).oninput = updateUnsavedBanner;
     $("layoutUpload").onchange = async (event) => {
         let file = event.target.files[0];
         if (!file) return;
@@ -657,14 +684,15 @@ function bindPortalEvents() {
     $("layoutSheet").onchange = loadLayoutSheet;
     $("layoutTemplate").onclick = () => {
         let wb = XLSX.utils.book_new(),
-            ws = XLSX.utils.json_to_sheet(demoLayoutFields, {
-                header: ["campo_produto", "campo_dataprep", "tipo"],
+            ws = XLSX.utils.json_to_sheet(demoLayoutFields.map(f => ({campo_produto: f.campo_produto, campo_spec: f.campo_dataprep, tipo: f.tipo})), {
+                header: ["campo_produto", "campo_spec", "tipo"],
             });
         ws["!cols"] = [{ wch: 28 }, { wch: 28 }, { wch: 16 }];
         XLSX.utils.book_append_sheet(wb, ws, "Layout");
         XLSX.writeFile(wb, "modelo_layout.xlsx");
     };
     $("saveLayout").onclick = async () => {
+        if (layoutViewOnly) return;
         const button = $("saveLayout");
         try {
             let record = makeLayoutDraft();
@@ -674,7 +702,7 @@ function bindPortalEvents() {
             if (layouts.some((l) => l.id === record.id))
                 layouts = layouts.map((l) => (l.id === record.id ? record : l));
             else layouts.push(record);
-            if (!$("parameterView").hidden) selectedLayout = record.id;
+            if (layoutReturnToParameter) selectedLayout = record.id;
             saveLayouts();
             normalizeListRows(data);
 
@@ -682,7 +710,8 @@ function bindPortalEvents() {
             renderLayouts();
             render();
             renderLayoutStorage();
-            $("layoutDialog").close();
+            layoutBaseline = layoutDraftKey();
+            closeLayoutEditor();
             toast(
                 projectLayoutApiAvailable
                     ? "Layout salvo em layouts/ no projeto."
@@ -878,7 +907,7 @@ function bindPortalEvents() {
         persist();
         render();
         $("editor").close();
-        toast("Transtype salvo com " + rows.length + " condições. ");
+        toast("Transtype atualizado. Clique em Salvar na parametrização para gravar.");
         ttDraft = null;
     };
     $("cancelTt").onclick = () => {
@@ -886,20 +915,7 @@ function bindPortalEvents() {
         ttDraft = null;
     };
     $("importBtn").onclick = openImport;
-    $("navImport").onclick = openImport;
-    $("navHome").onclick = showProjects;
-    for (let id of ["guide", "navGuide"])
-        $(id).onclick = () => $("guideDialog").showModal();
-    for (let id of ["template", "guideTemplate"])
-        $(id).onclick = () =>
-            download(
-                (() => {
-                    let rows = demo.map((r) => ({ ...r }));
-
-                    return rows;
-                })(),
-                "modelo_parametrizacao_contabil.xlsx",
-            );
+    $("navHome").onclick = () => showParameterList("consult");
     $("export").onclick = generateParameterization;
     $("upload").onchange = async (e) => {
         let file = e.target.files[0];
@@ -929,8 +945,7 @@ function bindPortalEvents() {
         if (workbook) readSheet();
     };
     $("sheet").onchange = readSheet;
-    $("importMode").onchange = renderMapping;
-    $("sqlTemplate").onclick = () => {
+    const downloadRuleTemplate = () => {
         const compact = [
                 {
                     ...base,
@@ -962,11 +977,6 @@ function bindPortalEvents() {
             $("importError").textContent = "A aba não contém dados.";
             return;
         }
-        if (raw.length > 10001) {
-            $("importError").textContent =
-                "Use no máximo 10.000 linhas por importação.";
-            return;
-        }
         let imported = raw
             .slice(headerIndex() + 1)
             .filter((a) => a.some((v) => String(v).trim()))
@@ -980,10 +990,7 @@ function bindPortalEvents() {
             );
         let candidate;
         try {
-            candidate =
-                $("importMode").value === "sql"
-                    ? expandSqlRows(imported)
-                    : imported;
+            candidate = expandSqlRows(imported);
         } catch (e) {
             $("importError").textContent =
                 e.message + " Nenhum dado foi importado.";
@@ -1012,16 +1019,15 @@ function bindPortalEvents() {
             `${imported.length} linha(s) carregada(s). ${invalid ? invalid + " regra(s) com erro: revise os registros Com alerta." : "Regras importadas."}`,
         );
     };
-    $("newProject").onclick = () => {
-        $("projectForm").reset();
-        $("projectDialog").showModal();
-    };
     $("closeProjectDialog").onclick = () => $("projectDialog").close();
     $("projectForm").onsubmit = (event) => {
         event.preventDefault();
-        const name = $("projectName").value.trim(),
-            description = $("projectDescription").value.trim();
-        if (!name || !description) return;
+        const name = $("projectName").value.trim(), description = "";
+        if (!name) return;
+        if (projects.some(p => nameKey(p.name) === nameKey(name))) {
+            $("projectFormError").textContent = "Já existe uma parametrização com esse nome.";
+            return;
+        }
         const now = new Date().toISOString(),
             p = {
                 id: newRecordId(),
@@ -1037,13 +1043,21 @@ function bindPortalEvents() {
                 updatedAt: now,
             };
         projects.push(p);
-        saveProjectStore();
+        try {
+            saveProjectStore();
+        } catch (error) {
+            projects = projects.filter(project => project !== p);
+            $("projectFormError").textContent = "Não foi possível salvar: " + error.message;
+            return;
+        }
         $("projectDialog").close();
         openProject(p.id);
         toast("Projeto criado.");
     };
-    $("projectSearch").oninput = renderProjects;
+    $("projectSearch").oninput = () => { listPagination.projects.page = 1; renderProjects(); };
     $("projectList").onclick = (event) => {
+        const view = event.target.closest("[data-view-project]");
+        if (view) { openProject(view.dataset.viewProject, true); return; }
         const remove = event.target.closest("[data-delete-project]");
         if (remove) {
             openDeleteProject(remove.dataset.deleteProject);
@@ -1116,12 +1130,12 @@ function bindPortalEvents() {
     };
     $("deleteLayoutConfirmation").oninput = () => {
         $("confirmDeleteLayout").disabled =
-            $("deleteLayoutConfirmation").value !== "EXCLUIR";
+            !isDeleteConfirmation($("deleteLayoutConfirmation").value);
     };
     $("cancelDeleteLayout").onclick = () => $("deleteLayoutDialog").close();
     $("deleteLayoutForm").onsubmit = async (event) => {
         event.preventDefault();
-        if ($("deleteLayoutConfirmation").value !== "EXCLUIR") return;
+        if (!isDeleteConfirmation($("deleteLayoutConfirmation").value)) return;
         const id = deletingLayoutId;
         if (layoutLinks(id).length) {
             $("deleteLayoutError").textContent =
@@ -1146,11 +1160,12 @@ function bindPortalEvents() {
             fillLayoutForm();
             render();
             $("deleteLayoutDialog").close();
+            renderLayoutList();
             toast("Layout excluído.");
         } catch (e) {
             $("deleteLayoutError").textContent = e.message;
         } finally {
-            button.disabled = $("deleteLayoutConfirmation").value !== "EXCLUIR";
+            button.disabled = !isDeleteConfirmation($("deleteLayoutConfirmation").value);
         }
     };
     $("pilotAll").onclick = () => setAllMarkings("pilot", true);
@@ -1159,7 +1174,7 @@ function bindPortalEvents() {
     $("excludeNone").onclick = () => setAllMarkings("excluded", false);
     $("deleteProjectConfirmation").oninput = () => {
         $("confirmDeleteProject").disabled =
-            $("deleteProjectConfirmation").value !== "EXCLUIR";
+            !isDeleteConfirmation($("deleteProjectConfirmation").value);
     };
     $("cancelDeleteProject").onclick = () => $("deleteProjectDialog").close();
     $("deleteProjectForm").onsubmit = (event) => {
@@ -1189,12 +1204,15 @@ function revalidateImportedRule() {
             id: newRecordId(),
         }));
         ttDraft.importError = "";
+        ttDraft.revalidated = true;
         $("rawSqlError").textContent =
             "Sintaxe revalidada. Confira os campos e valores antes de salvar.";
         renderTtConditions();
         ttFeedback();
     } catch (error) {
         ttDraft.importError = error.message;
+        ttDraft.revalidated = false;
+        $("rawSqlError").classList.remove("success");
         $("rawSqlError").textContent = error.message;
         ttFeedback();
     }

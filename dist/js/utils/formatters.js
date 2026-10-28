@@ -43,6 +43,10 @@ function normalizedText(value) {
         .trim();
 }
 
+function removeAccents(value) {
+    return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function fieldName(value) {
     return String(value ?? "").trim();
 }
@@ -54,7 +58,8 @@ function fieldKey(value) {
 
 function sqlIdentifier(value) {
     const name = fieldName(value);
-    return name.includes("-") ? "\x60" + name + "\x60" : name;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw Error("Campo Spec " + name + ": ajuste o nome para um identificador SQL sem hífen, pois a saída não utiliza crases.");
+    return name;
 }
 
 function normalizedOp(value) {
@@ -97,3 +102,9 @@ function headerIndex() {
         Math.min(9999, (parseInt($("headerRow").value, 10) || 1) - 1),
     );
 }
+
+function isDeleteConfirmation(value) {
+    return String(value ?? "").trim().toLowerCase() === "excluir";
+}
+
+function nameKey(value) { return String(value ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR"); }

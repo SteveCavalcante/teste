@@ -69,7 +69,7 @@ Gerar parametrização baixa o Excel nessa mesma visão: uma linha por Transtype
 
 ## Exemplo com 33 Transtypes
 
-O exemplo demonstrativo inclui TT001 (recebimento de vendas), TT002 (pagamento a fornecedores), TT003 (tarifas de serviços) e TT004 (ajuste contábil). Há diferenças de empresas, departamentos, contas, períodos, IN/NOT IN e limites de valor. O botão de carregamento manual do exemplo foi removido da interface. Dados importados não são substituídos automaticamente; a atualização automática se aplica apenas ao antigo exemplo demonstrativo.
+O exemplo demonstrativo inclui TT001 (recebimento de vendas), TT002 (pagamento a fornecedores), TT003 (tarifas de serviços) e TT004 (ajuste contábil). Há diferenças de empresas, departamentos, contas, períodos, IN/NOT IN e limites de valor. O botão de carregamento manual do exemplo foi removido da interface. Dados importados não são substituídos automaticamente; não há substituição automática do antigo exemplo demonstrativo.
 
 ## Seleção de campos nas condições
 
@@ -124,8 +124,7 @@ O operador diferente `<>` está disponível no construtor visual, na importaçã
 Cada projeto pode ser excluído na listagem, após digitar EXCLUIR. Isso remove suas parametrizações e marcações do navegador; os layouts compartilhados permanecem. É possível excluir todos os projetos, sem recriar o exemplo ao recarregar. Atributo data e Atributo valor na tabela e no Excel exibem campo_dataprep conforme o mapeamento; a edição conserva as referências selecionadas. A pesquisa e ordenação dos atributos usam os nomes DataPrep apresentados.
 
 ### Origem e destino por projeto
-
-Abaixo do Código de Serviço, informe Database - Origem, Tabela - Origem, Database - Destino e Tabela - Destino. Os valores são salvos automaticamente por projeto no navegador. LK2 sugere `db_corp_repositoriosdedados_integracaovarejo_contabil_spec_01` e VP8 sugere `db_corp_gestaodefinancas_integracao_recepcaocontabil_spec_01`; ambos permanecem editáveis. Nomes provisórios de versões anteriores são substituídos pelo padrão ao abrir o projeto. Um destino personalizado é preservado ao trocar o tipo.
+Abaixo do Código de Serviço, informe Database - Origem, Tabela - Origem, Database - Destino e Tabela - Destino. Os valores são gravados ao clicar em Salvar na parametrização. Voltar descarta o rascunho. LK2 sugere `db_corp_repositoriosdedados_integracaovarejo_contabil_spec_01` e VP8 sugere `db_corp_gestaodefinancas_integracao_recepcaocontabil_spec_01`; ambos permanecem editáveis. Nomes provisórios de versões anteriores são substituídos pelo padrão ao abrir o projeto. Um destino personalizado é preservado ao trocar o tipo.
 
 ## Código organizado
 
@@ -158,12 +157,35 @@ AND/E e OR/OU são aceitos sem diferenciar caixa. A coluna LÓGICA no editor per
 
 O cadastro do layout inclui Código do layout, obrigatório para salvar ou baixar uma cópia JSON. O código aceita texto com até 100 caracteres e preserva zeros à esquerda. O JSON de layout usa schemaVersion 3 e inclui `code`. Layouts antigos sem código continuam legíveis; preencha o código ao salvar suas alterações. O identificador técnico `id` continua independente do código informado.
 
-A tela de parametrização possui uma seção Informações da parametrização com Squad e Base de conhecimento. São campos opcionais salvos automaticamente por projeto, com limites de 100 e 2.000 caracteres, respectivamente. Base de conhecimento é informada como código em um campo de texto de uma linha, com o mesmo tamanho visual de Squad.
+A tela de parametrização possui uma seção Informações da parametrização com Squad e Base de conhecimento. São campos opcionais gravados pelo botão Salvar da parametrização, com limites de 100 e 2.000 caracteres, respectivamente. Base de conhecimento é informada como código em um campo de texto de uma linha, com o mesmo tamanho visual de Squad.
 
 O filtro **Somente marcadas para piloto** exibe apenas os Transtypes marcados na coluna Piloto; a busca e a geração da parametrização respeitam os registros exibidos.
 
 ## Salvamento dos projetos no computador
 
-Ao iniciar com `python server.py`, os projetos e layouts do navegador são salvos automaticamente no arquivo `dados/portal.json`. Abra o mesmo endereço local para recuperar em outro navegador ou janela anônima. A tela mostra se a gravação foi confirmada. O arquivo possui controle de concorrência: se outra janela salvar primeiro, a gravação conflitante é bloqueada e a tela informa o erro. O portal hospedado continua usando o navegador. Faça cópias de segurança da pasta `dados/` e também de `layouts/`; salvar no mesmo computador não protege contra falha ou perda do dispositivo. Na primeira execução local, se não houver arquivo local, os dados do navegador atual serão gravados no arquivo. Se já houver arquivo local, ele é carregado, e eventuais dados diferentes do navegador são preservados em uma cópia no armazenamento do navegador.
+Ao iniciar com `python server.py`, os projetos são salvos em arquivos individuais em `dados/projetos/`, com índice em `dados/indice.json`. Abra o mesmo endereço local para recuperar em outro navegador ou janela anônima. A tela mostra se a gravação foi confirmada. O arquivo possui controle de concorrência: se outra janela salvar primeiro, a gravação conflitante é bloqueada e a tela informa o erro. O portal hospedado continua usando o navegador. Faça cópias de segurança da pasta `dados/` e também de `layouts/`; salvar no mesmo computador não protege contra falha ou perda do dispositivo. Na primeira execução local, se não houver arquivo local, os dados do navegador atual serão gravados no arquivo. Se já houver arquivo local, ele é carregado, e dados diferentes são preservados e o salvamento é bloqueado para evitar substituição.
 
 O botão Salvar projeto confirma o salvamento no computador quando o servidor Python estiver ativo. Na versão online ele confirma o armazenamento no navegador. Caso haja conflito ou falha no arquivo, informa que a gravação não foi confirmada.
+
+Na versão local com Python, projetos são mantidos em memória e salvos individualmente em dados/projetos/, sem depender da cota de localStorage. A importação de Transtypes não possui limite de número de linhas; mantém o limite de arquivo de 10 MB e o limite de 200 MB para o conjunto de dados salvo. O limite de tamanho da importação de layouts é independente. Faça backup dos arquivos.
+
+## Projetos em arquivos separados
+
+Na execução local Python, cada projeto é salvo em um JSON em `dados/projetos/`. O arquivo `dados/indice.json` aponta para as versões confirmadas e guarda a revisão e os metadados compartilhados. O salvamento grava primeiro os projetos completos e depois atualiza o índice atomicamente. O `dados/portal.json` legado permanece intacto como backup ao migrar; depois que o novo índice existe, ele é a referência. Projetos excluídos deixam de ser referenciados; arquivos anteriores podem permanecer em caso de falha na limpeza.
+
+O limite de 200 MB ainda se aplica ao conjunto enviado ao servidor por operação; a separação em arquivos não elimina esse limite. Faça backup de toda a pasta `dados/` e da pasta `layouts/`, com o servidor parado.
+
+
+## Roteirizou! — backlog consolidado
+
+Confira `BACKLOG_ROTEIRIZOU.md` para a auditoria item a item. Os dados antigos e os formatos JSON anteriores continuam compatíveis.
+
+### Exclusões
+
+A limpeza geral de componentes e a autorização administrativa foram retiradas a pedido do usuário. A exclusão permanece individual, em cada layout ou parametrização, com confirmação EXCLUIR sem distinguir maiúsculas/minúsculas. Os vínculos de layouts são verificados antes da exclusão. Não existe tela de limpeza geral.
+
+### Consultas e navegação
+
+Exibir e Alterar são ações distintas. Exibir permite consultar e exportar sem habilitar edição. A busca de parametrizações aceita códigos parciais de Transtypes. As duas listagens permitem ordenar por nome, cadastro e atualização antes da paginação. Datas ausentes ficam ao final.
+
+A faixa laranja aparece quando há alterações reais no formulário. Salvar a parametrização grava o rascunho; Voltar e demais saídas solicitam confirmação antes de descartá-lo. O modo recolhido do menu é preservado como preferência do navegador.

@@ -37,16 +37,12 @@ class LayoutService:
             ).strip()
             target = str(field.get("campo_dataprep") or "").strip()
             kind = str(field.get("tipo") or "").strip().upper()
-            if (
-                product and not cls.FIELD_NAME.fullmatch(product)
-            ) or not cls.FIELD_NAME.fullmatch(target):
+            if not cls.FIELD_NAME.fullmatch(target):
                 raise ValueError("Nome de campo inválido.")
             if kind not in cls.TYPES:
                 raise ValueError("Tipo inválido: " + kind)
-            if product and product.casefold() in products:
-                raise ValueError("Campo de produto duplicado: " + product)
             if target.casefold() in targets:
-                raise ValueError("Campo DataPrep duplicado: " + target)
+                raise ValueError("Campo Spec duplicado: " + target)
             if product:
                 products.add(product.casefold())
             targets.add(target.casefold())

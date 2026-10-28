@@ -2,17 +2,23 @@
 function fieldErrors(r) {
     if (r._sqlImportError) return { regra_sql: r._sqlImportError };
     let errors = {};
+    if (["OR", "OU"].includes(String(r._connector || "").trim().toUpperCase())) errors.operador_logico = "OR/OU não é aceito; altere para AND/E.";
     const exists = (k) => {
         let v = String(r[k] ?? "").trim(),
             layout = activeLayout();
         if (!layout) errors[k] = "Selecione um layout para validar o campo.";
+        else if ((layout.fields || []).filter(f => fieldKey(f.campo_produto) === fieldKey(v)).length > 1)
+            errors[k] = `Campo de produto "${v}" aponta para mais de um campo Spec. Selecione o campo Spec desejado.`;
         else if (!resolveField(v))
             errors[k] =
                 'Campo "' +
                 v +
-                '" não localizado nos campos de Produto ou DataPrep do layout "' +
+                '" não localizado nos campos de Produto ou Spec do layout "' +
                 layout.name +
                 '".';
+        else {
+            try { sqlIdentifier(resolveField(v).campo_dataprep); } catch(error) { errors[k] = error.message; }
+        }
     };
     for (const k of keys)
         if (!String(r[k] ?? "").trim())
@@ -152,12 +158,12 @@ function readSqlList(input) {
         if (!wrapped && !rest.startsWith(","))
             return { value: items.join(", "), type: "list", rest: trailing };
         if (!rest.startsWith(","))
-            throw Error("Separe os valores da lista com vírgulas.");
+            throw Error(wrapped && !rest ? "Lista IN/NOT IN sem fechamento: adicione )." : "Separe os valores da lista com vírgulas e feche os parênteses.");
         rest = rest.slice(1).trimStart();
         if (!rest || rest.startsWith(")"))
             throw Error("Valor ausente após a vírgula.");
     }
-    throw Error("Lista incompleta.");
+    throw Error("Lista IN/NOT IN incompleta: feche os parênteses e informe todos os valores.");
 }
 
 function parseListValue(value) {
@@ -203,9 +209,9 @@ function typedLiteral(value, type) {
     if (["DATE", "DATETIME"].includes(type))
         v = v.replace(/^(?:DATE|TIMESTAMP)\s+'([^']+)'$/i, "$1");
     if (type === "STRING") {
-        v = normalizedText(v);
+        v = removeAccents(v).toUpperCase();
         if (!v) throw Error("Texto vazio após a limpeza.");
-        return { display: v, sql: "'" + v + "'", type: "string" };
+        return { display: v, sql: "'" + v.replace(/'/g, "''") + "'", type: "string" };
     }
     if (type === "INT") {
         if (!/^[+-]?\d+$/.test(v))
@@ -281,6 +287,7 @@ function typedCondition(r) {
 
 function normalizeListRows(rows) {
     for (const r of rows) {
+        r.DESCRICAO_TRANSTYPE = removeAccents(r.DESCRICAO_TRANSTYPE);
         if (r._sqlImportError) continue;
         r.operador = normalizedOp(r.operador);
         for (const k of ["campo", "ATRIBUTO_DATA", "ATRIBUTO_VALOR"])
@@ -314,10 +321,16 @@ function parseSqlCell(input) {
             );
         if (!head)
             throw Error(
-                "Condição inválida. Informe campo, operador e valor; conecte condições por AND/E ou OR/OU. Funções e agrupamentos lógicos ainda não são aceitos.",
+                "Condição inválida. Informe campo, operador e valor; conecte condições por AND/E. Funções e agrupamentos lógicos ainda não são aceitos.",
             );
         rest = rest.slice(head[0].length);
         const op = normalizedOp(head[2]);
+        const invalidOperator = /^[=><!]+/.exec(rest);
+        if (invalidOperator) {
+            const combined = head[2] + invalidOperator[0];
+            const suggestion = combined === '==' ? '=' : combined === '=>' ? '>=' : combined === '=<' ? '<=' : combined === '!=' ? '<>' : 'um operador aceito';
+            throw Error(`Linha ${String(input).slice(0,String(input).length-rest.length).split('\n').length}: operador ${combined} inválido. Use ${suggestion}.`);
+        }
         const literal = ["IN", "NOT IN"].includes(op)
             ? readSqlList(rest)
             : readSqlLiteral(rest);
@@ -337,7 +350,8 @@ function parseSqlCell(input) {
             const after = rest.slice(logical[0].length);
             // A field may itself be named E, AND, OR or OU.
             if (!/^(?:<>|>=|<=|=|>|<|IN\b|NOT\s+IN\b)/i.test(after)) {
-                connector = /^(OR|OU)$/i.test(logical[1]) ? "OR" : "AND";
+                if (/^(OR|OU)$/i.test(logical[1])) throw Error("Operador OR/OU não é aceito. Use AND/E entre as condições.");
+                connector = "AND";
                 rest = after;
                 if (!rest)
                     throw Error("Operador lógico sem uma condição após ele.");
@@ -351,7 +365,7 @@ function parseSqlCell(input) {
             )
         )
             throw Error(
-                "Separação inválida. Use AND/E ou OR/OU entre condições completas.",
+                "Separação inválida. Use AND/E entre condições completas.",
             );
         connector = "AND";
     }
@@ -394,8 +408,6 @@ function expandSqlRows(sourceRows) {
                 _sourceRuleId: "linha-" + i,
             })),
         );
-        if (expanded.length > 10000)
-            throw Error("A expansão excede 10.000 condições.");
     }
     return expanded;
 }

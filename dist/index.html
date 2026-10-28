@@ -3,30 +3,39 @@
     <meta charset="utf-8" /><meta
         name="viewport"
         content="width=device-width,initial-scale=1"
-    /><title>Conecta | Parametrização de integrações</title
-    ><link rel="stylesheet" href="style.css" />
-    <script src="xlsx.js" defer></script>
-    <script src="js/repositories/browser-storage-repository.js" defer></script>
-    <script src="js/repositories/layout-api-repository.js" defer></script>
-    <script src="js/utils/formatters.js" defer></script>
-    <script src="js/services/layout-service.js" defer></script>
-    <script src="js/services/sql-service.js" defer></script>
-    <script src="js/services/project-service.js" defer></script>
-    <script src="js/views/portal-view.js" defer></script>
-    <script src="js/controllers/portal-controller.js" defer></script>
-    <script src="js/models/portal-state.js" defer></script>
-    <script src="app.js" defer></script>
+    /><title>Roteirizou! | Portal de integrações</title
+    ><link rel="stylesheet" href="style.css?v=61" />
+    <script src="js/startup.js?v=61" defer></script>
+    <script src="xlsx.js?v=61" defer></script>
+    <script src="js/repositories/browser-storage-repository.js?v=61" defer></script>
+    <script src="js/repositories/layout-api-repository.js?v=61" defer></script>
+    <script src="js/utils/formatters.js?v=61" defer></script>
+    <script src="js/services/layout-service.js?v=61" defer></script>
+    <script src="js/services/sql-service.js?v=61" defer></script>
+    <script src="js/services/project-service.js?v=61" defer></script>
+    <script src="js/services/project-transfer-service.js?v=61" defer></script>
+    <script src="js/services/navigation-service.js?v=61" defer></script>
+    <script src="js/services/experience-service.js?v=61" defer></script>
+    <script src="js/views/portal-view.js?v=61" defer></script>
+    <script src="js/controllers/portal-controller.js?v=61" defer></script>
+    <script src="js/models/portal-state.js?v=61" defer></script>
+    <script src="app.js?v=61" defer></script>
     <body>
         <aside>
-            <a class="brand" href="#"
-                ><b>conecta<span style="color: #ff8a29">.</span></b
-                ><small>PORTAL DE INTEGRAÇÕES</small></a
-            >
-            <div class="navlabel">NAVEGAÇÃO</div>
-            <button class="nav active" id="navHome">▦ &nbsp; Projetos</button
-            ><button class="nav" id="navImport">
-                ↥ &nbsp; Importar planilha</button
-            ><button class="nav" id="navGuide">⌘ &nbsp; Guia do modelo</button>
+            <a class="brand" href="#" aria-label="Roteirizou! início" id="brandHome"><svg class="route-logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 26V16a6 6 0 0 1 6-6h4a6 6 0 0 0 6-6M19 4h5v5" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="27" r="3" fill="white"/></svg><span class="brand-text">Roteirizou!</span></a>
+            <button type="button" id="toggleSidebar" class="sidebar-toggle" aria-label="Recolher menu" aria-expanded="true">☰</button>
+            <nav aria-label="Navegação principal">
+                <div class="nav-group"><h2>Layout</h2>
+                    <button class="nav nav-child" id="navLayoutCreate" aria-label="Cadastrar layout" title="Cadastrar layout"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-text">Cadastrar</span></button>
+                    <button class="nav nav-child" id="navLayouts" aria-label="Consultar layouts" title="Consultar layouts"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-text">Consultar</span></button>
+                </div>
+                <div class="nav-group"><h2>Parametrização</h2>
+                    <button class="nav nav-child" id="navParamCreate" aria-label="Cadastrar parametrização" title="Cadastrar parametrização"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-text">Cadastrar</span></button>
+                    <button class="nav nav-child active" id="navHome" aria-label="Consultar parametrizações" title="Consultar parametrizações"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-text">Consultar</span></button>
+                </div>
+                
+                
+            </nav>
             <div class="sidebottom">
                 <span class="avatar">SC</span>
                 <div>Steve Cavalcante<small>Protótipo de interface</small></div>
@@ -34,63 +43,153 @@
         </aside>
         <main>
             <header>
-                <span
-                    >Portal <i>/</i> Integrações <i>/</i>
-                    <b>Parametrizações</b></span
-                ><span class="env">● Protótipo • Front-end</span>
+                <nav id="breadcrumb" aria-label="Navegação estrutural"></nav><span class="env">Roteirizou! · v61</span>
             </header>
-            <p
-                class="hint"
-                id="projectStorageStatus"
-                role="status"
-                style="padding: 0 24px"
-            ></p>
+            <p id="applicationStatus" role="status" class="application-status">Carregando Roteirizou! v61…</p>
+            <p class="hint" id="projectStorageStatus" role="status" style="padding: 0 24px;"></p>
+            <div id="unsavedBanner" role="status" hidden>Há alterações não salvas. Clique em Salvar para gravar ou confirme a saída para descartá-las.</div>
             <div class="content">
+                <section id="layoutListView" hidden>
+                    <div class="heading"><div><div class="eyebrow">LAYOUT</div><h1>Consultar layouts</h1><p>Visualize os campos, altere ou exclua um layout cadastrado.</p></div></div>
+                    <label>Pesquisar layout<input type="search" id="layoutListSearch" placeholder="Nome ou código do layout"></label>
+                    <div class="list-order-controls"><label>Ordenar por<select id="layoutsSortKey"><option value="name">Nome</option><option value="createdAt">Data de cadastro</option><option value="updatedAt">Última atualização</option></select></label><label>Ordem<select id="layoutsSortDirection"><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label></div>
+                    <p id="layoutListError" role="alert"></p>
+                    <div id="layoutList"></div>
+<div class="list-pagination"><label>Itens por página<select id="layoutsListSize"><option value="10">10</option><option value="50">50</option><option value="100">100</option></select></label><span id="layoutsListInfo" role="status"></span><div><button type="button" class="secondary" id="layoutsListPrevious">Anterior</button><button type="button" class="secondary" id="layoutsListNext">Próxima</button></div></div>
+                </section>
+                <section id="layoutDialog" class="layout-screen" hidden>
+                    <button type="button" class="link" id="backLayouts">Voltar</button>
+                    <div class="eyebrow">LAYOUT DE ENTRADA</div>
+                    <h2 id="layoutDialogTitle">Cadastrar ou alterar layout</h2>
+                    <p>
+                        Importe Excel ou CSV com
+                        <b>campo_produto;campo_spec;tipo</b>. campo_produto é
+                        opcional; campo_spec e tipo são obrigatórios. A prévia SQL
+                        escreve o campo Spec.
+                    </p>
+                    <section class="layout-storage-panel" hidden>
+                        <b>Arquivos de layout do projeto</b>
+                        <p>
+                            Cada layout é armazenado em um JSON na pasta
+                            <code>layouts/</code>, com datas de cadastro e alteração.
+                        </p>
+                        <div class="layout-storage-actions">
+                            <button class="secondary" id="refreshProjectLayouts">
+                                Recarregar layouts
+                            </button>
+                        </div>
+                        <p id="layoutFolderStatus" role="status"></p>
+                        <p id="layoutStorageFeedback" role="status"></p>
+                        <div class="layout-inventory-wrap">
+                            <table class="layout-inventory">
+                                <thead>
+                                    <tr>
+                                        <th>LAYOUT</th>
+                                        <th>CÓDIGO</th>
+                                        <th>CADASTRO</th>
+                                        <th>ÚLTIMA ALTERAÇÃO</th>
+                                        <th>LOCAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="layoutInventory"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <label hidden
+                        >Layout cadastrado<select id="layoutEditSelect"></select
+                    ></label>
+                    <p id="layoutDates" class="hint" hidden></p>
+                    <div class="layout-identity-fields">
+                        <label>Código do layout <span class="required-star">*</span><input id="layoutCode" type="text" maxlength="100" required autocomplete="off" placeholder="Informe o código do layout"></label>
+                        <label>Nome do layout<input id="layoutName" maxlength="100" required></label>
+                    </div>
+                    <div class="layout-import-actions">
+                        <button class="secondary" id="layoutTemplate">
+                            ↓ Baixar modelo do layout</button
+                        ><label
+                            >Importar layout (.xlsx, .xlsm, .xls, .csv ou .layout.json)<input
+                                type="file"
+                                id="layoutUpload"
+                                accept=".xlsx,.xlsm,.xls,.csv,.json"
+                        /></label>
+                    </div>
+                    <label id="layoutSheetLabel" hidden
+                        >Aba do layout<select id="layoutSheet"></select></label
+                    ><label
+                        >Mapeamento do layout<textarea
+                            id="layoutFields"
+                            spellcheck="false"
+                            placeholder="campo_produto;campo_spec;tipo&#10;tipo_evento;cod_tipo_evento;INT"
+                        ></textarea>
+                    </label>
+                    <p class="hint">Uma linha por campo. Produto é opcional; Spec e tipo são obrigatórios. Tipos: STRING, INT, DECIMAL, DATE ou DATETIME.</p>
+                    <p id="layoutError" role="alert"></p>
+                    <div class="layout-preview-wrap">
+                        <table class="layout-preview">
+                            <thead>
+                                <tr>
+                                    <th>CAMPO_PRODUTO</th>
+                                    <th>CAMPO_SPEC</th>
+                                    <th>TIPO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="layoutPreview"></tbody>
+                        </table>
+                    </div>
+                    <div class="layout-save-actions">
+                        <button type="button" class="secondary" id="backLayoutsBottom">Voltar</button>
+                        <button class="primary" id="saveLayout">
+                            Salvar</button
+                        ><button class="secondary" id="downloadLayoutJson" hidden>
+                            Baixar cópia JSON</button
+                        ><button class="secondary danger" id="deleteLayout" hidden>
+                            Excluir layout
+                        </button>
+                    </div>
+                </section>
                 <section id="projectsView">
                     <div class="heading">
                         <div>
                             <div class="eyebrow">SOLICITAÇÕES DOS PRODUTOS</div>
-                            <h1>Projetos de Parametrização</h1>
+                            <h1 id="parameterListTitle">Alterar parametrização</h1>
                             <p>
-                                Organize as solicitações e acesse os Transtypes
-                                de cada projeto.
+                                Cadastre, consulte e altere as parametrizações e seus Transtypes.
                             </p>
                         </div>
-                        <button class="primary" id="newProject">
-                            ＋ Novo projeto
-                        </button>
+
                     </div>
+                    <input type="file" id="projectJsonFile" accept=".json,application/json" hidden><button type="button" class="secondary" id="importProjectJsonList">Importar JSON</button>
                     <div class="project-actions">
                         <input
                             type="search"
                             id="projectSearch"
-                            placeholder="Pesquisar projetos…"
-                            aria-label="Pesquisar projetos"
+                            placeholder="Pesquisar por nome ou código de Transtype…"
+                            aria-label="Pesquisar parametrizações"
                         /><button class="secondary" id="projectLayouts">
                             Gerenciar layouts
                         </button>
                     </div>
                     <p class="hint">
-                        Projetos e parametrizações são salvos neste navegador.
-                        Os layouts podem ser reutilizados entre projetos.
+                        Cada parametrização reúne os dados e Transtypes de uma solicitação.
+                        Os layouts podem ser reutilizados entre parametrizações.
                     </p>
+                    <div class="list-order-controls"><label>Ordenar por<select id="projectsSortKey"><option value="name">Nome</option><option value="createdAt">Data de cadastro</option><option value="updatedAt">Última atualização</option></select></label><label>Ordem<select id="projectsSortDirection"><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label></div>
                     <div id="projectList" class="project-list"></div>
+<div class="list-pagination"><label>Itens por página<select id="projectsListSize"><option value="10">10</option><option value="50">50</option><option value="100">100</option></select></label><span id="projectsListInfo" role="status"></span><div><button type="button" class="secondary" id="projectsListPrevious">Anterior</button><button type="button" class="secondary" id="projectsListNext">Próxima</button></div></div>
                 </section>
                 <div id="parameterView" hidden>
                     <div class="project-context">
                         <button class="link" id="backProjects">
-                            ← Projetos
+                            Voltar
                         </button>
                         <div>
-                            <small>PROJETO SELECIONADO</small
+                            <small>PARAMETRIZAÇÃO SELECIONADA</small
                             ><strong id="selectedProjectName"></strong>
                             <p id="selectedProjectDescription"></p>
                         </div>
                     </div>
-                    <div class="save-project-bar">
-                        <button class="primary" id="saveProject" type="button">
-                            Salvar projeto
-                        </button>
+                    <div class="save-project-bar"><button class="secondary" id="exportProjectJson" type="button">Exportar JSON</button><button class="secondary" id="importProjectJson" type="button">Importar JSON</button><button class="secondary" id="copyProject" type="button">Fazer cópia</button>
+                        <button class="primary" id="saveProject" type="button">Salvar</button>
                         <span id="saveProjectFeedback" role="status"></span>
                     </div>
                     <div class="heading">
@@ -107,17 +206,6 @@
                         <button class="primary" id="importBtn">
                             ＋ Importar Excel
                         </button>
-                    </div>
-                    <div class="notice">
-                        ◈
-                        <div>
-                            <b>Da planilha à integração, com controle.</b
-                            ><span
-                                >Importe os campos, revise os mapeamentos e
-                                configure as regras em SQL.</span
-                            >
-                        </div>
-                        <button id="template">Baixar modelo ↗</button>
                     </div>
                     <section class="parameter-type-panel">
                         <fieldset id="parameterType">
@@ -258,14 +346,10 @@
                             </div>
                         </div>
                         <p class="hint">
-                            Informações salvas automaticamente neste projeto.
+                            Clique em Salvar na parametrização para gravar estas informações.
                         </p>
                     </section>
-                    <p
-                        id="autoRuleInfo"
-                        class="auto-rule-info"
-                        role="status"
-                    ></p>
+                    
                     <section class="stats">
                         <article>
                             <span>Transtypes</span
@@ -656,19 +740,7 @@
                             >
                         </footer>
                     </section>
-                    <div class="bottom">
-                        <div>
-                            <h3>Condições organizadas por transtype.</h3>
-                            <p>
-                                Um Transtype pode variar apenas em campo,
-                                operador e valor. Descrição, empresa, atributos,
-                                departamentos e contas devem ser iguais.
-                            </p>
-                        </div>
-                        <button id="guide" class="link">
-                            Ver estrutura do Excel →
-                        </button>
-                    </div>
+                    <div class="screen-bottom-actions"><button type="button" class="secondary" id="backProjectsBottom">Voltar</button><button type="button" class="primary" id="saveProjectBottom">Salvar</button></div>
                 </div>
             </div>
         </main>
@@ -677,28 +749,14 @@
             <div class="eyebrow">IMPORTAÇÃO</div>
             <h2>Comece com sua planilha</h2>
             <p>
-                Arquivos .xlsx, .xls ou .csv, até 10 MB. Informe a linha que
+                Arquivos .xlsx, .xlsm, .xls ou .csv, até 10 MB. Informe a linha que
                 contém os cabeçalhos.
             </p>
-            <label
-                >Formato das regras<select id="importMode">
-                    <option value="columns">
-                        Uma condição por linha: campo, operador e valor
-                    </option>
-                    <option value="sql">
-                        Um Transtype por linha: regra em uma célula
-                    </option>
-                </select></label
-            >
-            <p id="importModeInfo">
-                O portal também aceita uma coluna regra_sql com condições
-                ligadas por AND/E ou OR/OU, ou separadas por quebras de linha.
-            </p>
-            <button id="sqlTemplate" class="secondary">
-                Baixar modelo com regra</button
-            ><label class="drop"
+            <p><strong>Formato das regras:</strong> um Transtype por linha, com a regra em uma célula.</p>
+            <p id="importModeInfo"></p>
+            <label class="drop"
                 >↥<b>Escolha um arquivo Excel</b
-                ><input type="file" id="upload" accept=".xlsx,.xls,.csv"
+                ><input type="file" id="upload" accept=".xlsx,.xlsm,.xls,.csv"
             /></label>
             <div id="mapping" hidden>
                 <label
@@ -728,7 +786,7 @@
             </p>
             <p id="ttSharedWarning" class="tt-shared-warning" role="alert"></p>
             <section id="rawSqlRepair" class="raw-sql-repair" hidden>
-                <h3>Regra importada com erro</h3>
+                <h3>Regra que precisa de correção</h3>
                 <p id="rawSqlError" role="alert"></p>
                 <label for="rawSqlInput">Texto original da regra</label>
                 <textarea id="rawSqlInput" spellcheck="false"></textarea>
@@ -736,7 +794,7 @@
                     Revalidar regra
                 </button>
                 <p class="hint">
-                    Corrija as aspas e os operadores AND/E ou OR/OU. Nenhuma
+                    Corrija as aspas e use apenas o operador AND/E. Nenhuma
                     correção é aplicada automaticamente.
                 </p>
             </section>
@@ -754,13 +812,12 @@
                 Selecione o campo na lista do layout; use a pesquisa para
                 localizá-lo. Campos desconhecidos vindos do Excel ficam
                 sinalizados até a correção. O tipo do valor vem do layout. As
-                condições informadas são preservadas ao salvar.
+                condições são ligadas automaticamente por AND ao salvar.
             </p>
             <div class="tt-conditions-wrap">
                 <table class="tt-conditions-table">
                     <thead>
                         <tr>
-                            <th>LÓGICA</th>
                             <th>CAMPO</th>
                             <th>OPERADOR</th>
                             <th>VALOR</th>
@@ -779,157 +836,29 @@
                 ></textarea>
             </label>
             <p class="hint">
-                Prévia MySQL com os nomes campo_dataprep e os tipos definidos no
+                Prévia MySQL com os nomes campo_spec e os tipos definidos no
                 layout. Textos são tratados na tela; nenhuma regra é executada
                 no banco.
             </p>
             <p id="sqlFeedback" role="status"></p>
             <div class="tt-editor-actions">
                 <button type="button" class="primary" id="saveTt">
-                    Salvar Transtype</button
+                    Salvar</button
                 ><button type="button" class="secondary" id="cancelTt">
                     Cancelar
                 </button>
             </div>
         </dialog>
-        <dialog id="guideDialog">
-            <form method="dialog"><button class="close">×</button></form>
-            <div class="eyebrow">GUIA DO MODELO</div>
-            <h2>Uma condição por linha</h2>
-            <p>
-                Use as colunas abaixo. Também é possível substituir campo,
-                operador e valor por uma coluna regra_sql. A célula pode usar
-                AND/E, OR/OU ou apenas espaço/quebra de linha entre condições
-                completas. Aceita IN, NOT IN, &gt;, &gt;=, &lt;, &lt;=, = e
-                &lt;&gt;. Informe listas separadas por vírgulas, sem parênteses.
-                Os parênteses são adicionados na montagem do SQL. Funções ou
-                agrupamentos lógicos são sinalizados para revisão. Regras com
-                aspas incorretas são carregadas com alerta e texto original para
-                correção.
-            </p>
-            <div id="guideFields"></div>
-            <p>
-                O portal gera uma prévia SQL a partir de campo, operador e
-                valor. Os operadores AND/E e OR/OU são preservados; sem
-                conectivo, é usado AND. Os demais atributos devem ser iguais em
-                todas as linhas desse transtype. Formate códigos e contas como
-                Texto no Excel para preservar os zeros à esquerda.
-            </p>
-            <button class="primary" id="guideTemplate">
-                Baixar Excel de exemplo
-            </button>
-        </dialog>
-        <dialog id="layoutDialog">
-            <form method="dialog"><button class="close">×</button></form>
-            <div class="eyebrow">LAYOUT DE ENTRADA</div>
-            <h2>Cadastrar ou editar layout</h2>
-            <p>
-                Importe Excel ou CSV com
-                <b>campo_produto;campo_dataprep;tipo</b>. campo_produto é
-                opcional; campo_dataprep e tipo são obrigatórios. A prévia SQL
-                escreve o campo DataPrep.
-            </p>
-            <section class="layout-storage-panel">
-                <b>Arquivos de layout do projeto</b>
-                <p>
-                    Cada layout é armazenado em um JSON na pasta
-                    <code>layouts/</code>, com datas de cadastro e alteração.
-                </p>
-                <div class="layout-storage-actions">
-                    <button class="secondary" id="refreshProjectLayouts">
-                        Recarregar layouts
-                    </button>
-                </div>
-                <p id="layoutFolderStatus" role="status"></p>
-                <p id="layoutStorageFeedback" role="status"></p>
-                <div class="layout-inventory-wrap">
-                    <table class="layout-inventory">
-                        <thead>
-                            <tr>
-                                <th>LAYOUT</th>
-                                <th>CÓDIGO</th>
-                                <th>CADASTRO</th>
-                                <th>ÚLTIMA ALTERAÇÃO</th>
-                                <th>LOCAL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="layoutInventory"></tbody>
-                    </table>
-                </div>
-            </section>
-            <label
-                >Layout cadastrado<select id="layoutEditSelect"></select
-            ></label>
-            <p id="layoutDates" class="hint"></p>
-            <label for="layoutCode"
-                >Código do layout <span class="required-star">*</span></label
-            >
-            <input
-                id="layoutCode"
-                type="text"
-                maxlength="100"
-                required
-                autocomplete="off"
-                aria-describedby="layoutCodeHint"
-                placeholder="Informe o código do layout"
-            />
-            <small id="layoutCodeHint" class="hint"
-                >Obrigatório para cadastrar ou salvar alterações no
-                layout.</small
-            >
-            <label
-                >Nome do layout<input id="layoutName" maxlength="100"
-            /></label>
-            <div class="layout-import-actions">
-                <button class="secondary" id="layoutTemplate">
-                    ↓ Baixar modelo do layout</button
-                ><label
-                    >Importar layout (.xlsx, .xls, .csv ou .layout.json)<input
-                        type="file"
-                        id="layoutUpload"
-                        accept=".xlsx,.xls,.csv,.json"
-                /></label>
-            </div>
-            <label id="layoutSheetLabel" hidden
-                >Aba do layout<select id="layoutSheet"></select></label
-            ><label
-                >Mapeamento do layout<textarea
-                    id="layoutFields"
-                    spellcheck="false"
-                    placeholder="campo_produto;campo_dataprep;tipo&#10;tipo_evento;cod_tipo_evento;INT"
-                ></textarea>
-            </label>
-            <p class="hint">
-                Uma linha por campo. Produto é opcional: ;CAMPO_EXEMPLO;STRING.
-                DataPrep e tipo são obrigatórios. Tipos: STRING, INT, DECIMAL,
-                DATE ou DATETIME. Maiúsculas e minúsculas dos nomes são
-                preservadas; hífen é permitido. IN e NOT IN usam uma lista de
-                valores do mesmo tipo do campo.
-            </p>
-            <p id="layoutError" role="alert"></p>
-            <div class="layout-preview-wrap">
-                <table class="layout-preview">
-                    <thead>
-                        <tr>
-                            <th>CAMPO_PRODUTO</th>
-                            <th>CAMPO_DATAPREP</th>
-                            <th>TIPO</th>
-                        </tr>
-                    </thead>
-                    <tbody id="layoutPreview"></tbody>
-                </table>
-            </div>
-            <div class="layout-save-actions">
-                <button class="primary" id="saveLayout">
-                    Salvar e selecionar layout</button
-                ><button class="secondary" id="downloadLayoutJson">
-                    Baixar cópia JSON</button
-                ><button class="secondary danger" id="deleteLayout">
-                    Excluir layout
-                </button>
-            </div>
-        </dialog>
+
         <div id="toast" role="status"></div>
+        <dialog id="copyProjectDialog">
+            <form id="copyProjectForm">
+                <h2>Fazer cópia da parametrização</h2>
+                <label>Nome da nova parametrização<input id="copyProjectName" maxlength="100" required autocomplete="off"></label>
+                <p id="copyProjectError" role="alert"></p>
+                <div class="layout-save-actions"><button type="button" class="secondary" id="cancelCopyProject">Cancelar</button><button type="submit" class="primary">Criar cópia</button></div>
+            </form>
+        </dialog>
         <dialog id="projectDialog">
             <form id="projectForm">
                 <button type="button" class="close" id="closeProjectDialog">
@@ -941,14 +870,8 @@
                     >Nome do produto / projeto<input
                         id="projectName"
                         maxlength="100"
-                        required /></label
-                ><label
-                    >Descrição da solicitação<textarea
-                        id="projectDescription"
-                        maxlength="2000"
-                        required
-                    ></textarea></label
-                ><button class="primary" type="submit">Criar projeto</button>
+                        required /></label>
+                <p id="projectFormError" role="alert"></p><button class="primary" type="submit">Salvar</button>
             </form>
         </dialog>
         <dialog id="deleteLayoutDialog">
@@ -959,7 +882,7 @@
                 <h2>Excluir layout</h2>
                 <p id="deleteLayoutMessage"></p>
                 <label
-                    >Digite exatamente EXCLUIR<input
+                    >Digite excluir para confirmar<input
                         id="deleteLayoutConfirmation"
                         autocomplete="off"
                         required
@@ -985,10 +908,10 @@
                 >
                     ×
                 </button>
-                <h2>Excluir projeto</h2>
+                <h2>Excluir parametrização</h2>
                 <p id="deleteProjectMessage"></p>
                 <label
-                    >Digite exatamente EXCLUIR<input
+                    >Digite excluir para confirmar<input
                         id="deleteProjectConfirmation"
                         autocomplete="off"
                         required
@@ -1000,7 +923,7 @@
                     id="confirmDeleteProject"
                     disabled
                 >
-                    Confirmar exclusão do projeto
+                    Confirmar exclusão da parametrização
                 </button>
             </form>
         </dialog>

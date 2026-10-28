@@ -19,6 +19,12 @@ function suggestDestinationDatabase() {
 }
 
 function persist() {
+    if (projectReadOnly) return;
+    if (projectEditActive) {
+        $("saveProjectFeedback").textContent = "Alterações pendentes. Clique em Salvar para gravar.";
+        updateUnsavedBanner();
+        return;
+    }
     saveCurrentProject();
     portalRepository.write("conecta-contabil-v1", {
         parameterType,
@@ -41,10 +47,11 @@ function saveProjectStore() {
 }
 
 function saveCurrentProject() {
+    if (projectEditActive) return;
     const p = currentProject();
     if (!p) return;
     Object.assign(p, {
-        rows: data,
+        rows: data.map(r => ({ ...r })),
         parameterType,
         serviceCode,
         integrationLocations: { ...integrationLocations },
@@ -61,6 +68,9 @@ function saveCurrentProject() {
 function restoreProject(id) {
     currentProjectId = id;
     const p = currentProject();
+    if (p?.layoutSnapshot && !layouts.some(l => l.id === p.layoutId)) {
+        try { layouts.push(parseLayoutRecord(p.layoutSnapshot)); } catch {}
+    }
     parameterDetails = {
         squad: String(p?.parameterDetails?.squad ?? ""),
         knowledgeBase: String(p?.parameterDetails?.knowledgeBase ?? ""),
@@ -84,7 +94,10 @@ function restoreProject(id) {
         $("selectedProjectDescription").textContent = "";
         return;
     }
-    data = (p.rows || []).map((r) => ({ ...r }));
+    data = (p.rows || []).map((r) => ({
+        ...r,
+        DESCRICAO_TRANSTYPE: removeAccents(r.DESCRICAO_TRANSTYPE),
+    }));
     parameterType = p.parameterType || "";
     suggestDestinationDatabase();
     serviceCode = p.serviceCode || "";
@@ -113,10 +126,10 @@ function setAllMarkings(kind, checked) {
 }
 
 function removeProject(id, confirmation) {
-    if (confirmation !== "EXCLUIR") throw Error("Digite exatamente EXCLUIR.");
+    if (!isDeleteConfirmation(confirmation)) throw Error("Digite excluir para confirmar.");
     if (!projects.some((p) => p.id === id))
         throw Error("Projeto não encontrado.");
-    saveCurrentProject();
+    discardProjectEdit();
     const remaining = projects.filter((p) => p.id !== id),
         selected = remaining.some((p) => p.id === currentProjectId)
             ? currentProjectId
@@ -133,4 +146,25 @@ function removeProject(id, confirmation) {
     renderLayouts();
     render();
     showProjects();
+}
+
+function discardProjectEdit() {
+    if (!projectEditActive) { projectReadOnly = false; return; }
+    projectEditActive = false;
+    projectReadOnly = false;
+    restoreProject(currentProjectId);
+}
+
+function commitProjectEdit() {
+    if (projectReadOnly) return;
+    const editing = projectEditActive, original = currentProject() ? JSON.parse(JSON.stringify(currentProject())) : null;
+    projectEditActive = false;
+    try {
+        persist();
+        if (portalRepository.blocked) throw Error(portalRepository.message);
+        projectBaseline = projectDraftKey();
+    } catch (error) {
+        if (original) projects = projects.map(p => p.id === original.id ? original : p);
+        throw error;
+    } finally { projectEditActive = editing; updateUnsavedBanner(); }
 }

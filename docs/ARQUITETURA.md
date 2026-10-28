@@ -4,25 +4,25 @@ O portal continua sem etapa de compilação. O navegador executa JavaScript e o 
 
 ## Responsabilidades
 
-| Arquivo ou pasta                                     | Responsabilidade                                                        |
-| ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| `dist/index.html`                                    | Estrutura, formulários, diálogos e ordem dos scripts                    |
-| `dist/style.css`                                     | Aparência, cores e comportamento responsivo                             |
-| `dist/app.js`                                        | Inicialização: carregar dados, renderizar a tela e conectar eventos     |
-| `dist/js/models/portal-state.js`                     | Estado da aplicação, exemplos e recuperação de dados existentes         |
-| `dist/js/views/portal-view.js`                       | Renderização, tabela, mensagens e seletores de campos                   |
-| `dist/js/controllers/portal-controller.js`           | Eventos, navegação, edição, importação e exportação                     |
-| `dist/js/services/sql-service.js`                    | Tipos, validação contábil, leitura de regras e geração da expressão SQL |
-| `dist/js/services/layout-service.js`                 | Validação, mapeamento e coordenação dos layouts                         |
-| `dist/js/services/project-service.js`                | Troca de projetos, salvamento e marcações                               |
-| `dist/js/repositories/browser-storage-repository.js` | Acesso ao armazenamento do navegador                                    |
-| `dist/js/repositories/layout-api-repository.js`      | Requisições HTTP à API de layouts                                       |
-| `dist/js/utils/formatters.js`                        | Identificadores, textos, datas, contas e nomes de campos                |
-| `server.py`                                          | Composição e inicialização do servidor Python                           |
-| `backend/http_controller.py`                         | Receber HTTP, validar requisições e devolver respostas                  |
-| `backend/layout_service.py`                          | Regras e validação do conteúdo de um layout                             |
-| `backend/layout_repository.py`                       | Ler, salvar e excluir JSONs com gravação atômica                        |
-| `server.mjs`                                         | Servidor Node anterior, mantido como alternativa                        |
+| Arquivo ou pasta | Responsabilidade |
+| --- | --- |
+| `dist/index.html` | Estrutura, formulários, diálogos e ordem dos scripts |
+| `dist/style.css` | Aparência, cores e comportamento responsivo |
+| `dist/app.js` | Inicialização: carregar dados, renderizar a tela e conectar eventos |
+| `dist/js/models/portal-state.js` | Estado da aplicação, exemplos e recuperação de dados existentes |
+| `dist/js/views/portal-view.js` | Renderização, tabela, mensagens e seletores de campos |
+| `dist/js/controllers/portal-controller.js` | Eventos, navegação, edição, importação e exportação |
+| `dist/js/services/sql-service.js` | Tipos, validação contábil, leitura de regras e geração da expressão SQL |
+| `dist/js/services/layout-service.js` | Validação, mapeamento e coordenação dos layouts |
+| `dist/js/services/project-service.js` | Troca de projetos, salvamento e marcações |
+| `dist/js/repositories/browser-storage-repository.js` | Acesso ao armazenamento do navegador |
+| `dist/js/repositories/layout-api-repository.js` | Requisições HTTP à API de layouts |
+| `dist/js/utils/formatters.js` | Identificadores, textos, datas, contas e nomes de campos |
+| `server.py` | Composição e inicialização do servidor Python |
+| `backend/http_controller.py` | Receber HTTP, validar requisições e devolver respostas |
+| `backend/layout_service.py` | Regras e validação do conteúdo de um layout |
+| `backend/layout_repository.py` | Ler, salvar e excluir JSONs com gravação atômica |
+| `server.mjs` | Servidor Node anterior, mantido como alternativa |
 
 ## Padrões aplicados
 

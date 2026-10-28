@@ -46,7 +46,7 @@ class LayoutRepository:
             layouts, _, paths = self.list()
             old = next((item for item in layouts if item["id"] == identifier), None)
             if any(
-                item["id"] != identifier and item["name"] == record["name"]
+                item["id"] != identifier and " ".join(item["name"].split()).casefold() == " ".join(record["name"].split()).casefold()
                 for item in layouts
             ):
                 raise ValueError("Já existe outro layout com esse nome.")
@@ -82,8 +82,8 @@ class LayoutRepository:
             return record
 
     def delete(self, identifier, confirmation):
-        if confirmation != "EXCLUIR":
-            raise ValueError("Digite exatamente EXCLUIR.")
+        if not isinstance(confirmation, str) or confirmation.strip().casefold() != "excluir":
+            raise ValueError("Digite excluir para confirmar.")
         with self.lock:
             _, _, paths = self.list()
             if identifier not in paths:

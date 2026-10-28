@@ -410,3 +410,10 @@ function hydratePortalState() {
             l.name = "Layout de demonstração (4 Transtypes)";
     restoreProject(currentProjectId);
 }
+
+let layoutReturnToParameter = false;
+
+let projectEditActive = false;
+const listPagination = { projects: { page: 1, size: 10 }, layouts: { page: 1, size: 10 } };
+
+let projectReadOnly = false, layoutViewOnly = false, projectBaseline = '', layoutBaseline = '';
