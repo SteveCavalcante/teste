@@ -65,6 +65,19 @@ class ServerTests(unittest.TestCase):
         connection.close()
         return status, body
 
+    def test_duplicate_names_ignore_case_and_spacing(self):
+        self.repository.save("teste", self.layout)
+        duplicate = {**self.layout, "id": "outro", "name": "  LAYOUT   DE TESTE "}
+        with self.assertRaisesRegex(ValueError, "Já existe"):
+            self.repository.save("outro", duplicate)
+        values = {"conecta-projects-v1": {"projects": [
+            {"id": "um", "name": "Projeto Teste"},
+            {"id": "dois", "name": " projeto   teste "},
+        ]}}
+        with self.assertRaisesRegex(ValueError, "Já existe"):
+            self.project_repository.write(0, values)
+        self.assertEqual(self.project_repository.read()["revision"], 0)
+
     def test_layout_lifecycle_and_confirmation(self):
         status, body = self.request("PUT", "/api/layouts/teste", self.layout)
         self.assertEqual(status, 200)
@@ -77,13 +90,13 @@ class ServerTests(unittest.TestCase):
         status, body = self.request("GET", "/api/layouts")
         self.assertEqual(json.loads(body)["layouts"][0]["name"], "Renomeado")
         self.assertEqual(
-            self.request("DELETE", "/api/layouts/teste", {"confirmation": "excluir"})[
+            self.request("DELETE", "/api/layouts/teste", {"confirmation": "excluir tudo"})[
                 0
             ],
             400,
         )
         self.assertEqual(
-            self.request("DELETE", "/api/layouts/teste", {"confirmation": "EXCLUIR"})[
+            self.request("DELETE", "/api/layouts/teste", {"confirmation": "eXcLuIr"})[
                 0
             ],
             200,
@@ -153,10 +166,8 @@ class ServerTests(unittest.TestCase):
         status, body = self.request("GET", "/api/projects")
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["revision"], 0)
-        values = {"conecta-projects-v1": {"projects": [{"name": "Meu projeto"}]}}
-        status, body = self.request(
-            "PUT", "/api/projects", {"revision": 0, "values": values}
-        )
+        values = {"conecta-projects-v1": {"projects": [{"id": "teste-1", "name": "Meu projeto"}]}}
+        status, body = self.request("PUT", "/api/projects", {"revision": 0, "values": values})
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["revision"], 1)
         fresh = ProjectRepository(self.project_repository.directory).read()
@@ -164,10 +175,41 @@ class ServerTests(unittest.TestCase):
         status, _ = self.request("PUT", "/api/projects", {"revision": 0, "values": {}})
         self.assertEqual(status, 409)
         self.assertEqual(self.project_repository.read()["values"], values)
-        status, _ = self.request(
-            "PUT", "/api/projects", {"revision": 1, "values": {"unknown": {}}}
-        )
+        status, _ = self.request("PUT", "/api/projects", {"revision": 1, "values": {"unknown": {}}})
         self.assertEqual(status, 400)
+
+    def test_migration_projects_separate_and_atomic_index(self):
+        repo = self.project_repository
+        legacy = {"revision": 3, "values": {"conecta-projects-v1": {"selectedId": "p1", "projects": [{"id": "p1", "name": "Um"}, {"id": "p2", "name": "Dois"}]}}}
+        repo.path.write_text(json.dumps(legacy), encoding="utf-8")
+        self.assertEqual(repo.read(), legacy)
+        result = repo.write(3, legacy["values"])
+        self.assertEqual(result["revision"], 4)
+        self.assertEqual(result["values"], legacy["values"])
+        self.assertEqual(json.loads(repo.path.read_text(encoding="utf-8")), legacy)
+        self.assertEqual(len(list(repo.projects_dir.glob("*.json"))), 2)
+        updated = json.loads(json.dumps(result["values"]))
+        updated["conecta-projects-v1"]["projects"][0]["name"] = "Alterado"
+        result2 = repo.write(4, updated)
+        self.assertEqual(result2["values"]["conecta-projects-v1"]["projects"][0]["name"], "Alterado")
+        self.assertEqual(len(list(repo.projects_dir.glob("*.json"))), 2)
+        with self.assertRaises(FileExistsError):
+            repo.write(4, legacy["values"])
+        self.assertEqual(repo.read(), result2)
+        from unittest.mock import patch
+        original_write = repo._atomic_write
+        def interrupted(path, payload):
+            if path == repo.index:
+                raise OSError("interrupção simulada")
+            return original_write(path, payload)
+        with patch.object(repo, "_atomic_write", side_effect=interrupted):
+            with self.assertRaises(OSError):
+                repo.write(5, legacy["values"])
+        self.assertEqual(repo.read(), result2)
+        invalid = {"conecta-projects-v1": {"projects": [{"id": "p1"}, {"id": "p1"}]}}
+        with self.assertRaises(ValueError):
+            repo.write(5, invalid)
+        self.assertEqual(repo.read(), result2)
 
     def test_legacy_layout_alias(self):
         self.layout["fields"] = [
